@@ -3,9 +3,13 @@ import Sidebar from './components/Sidebar';
 import Toolbar from './components/Toolbar';
 import ChatPanel from './components/ChatPanel';
 import Canvas from './components/Whiteboard/Canvas';
+import Dashboard from './components/Dashboard';
+import { useTheme } from './hooks/useTheme';
 
 export default function App() {
+  const { theme, toggleTheme } = useTheme();
   const [activeTool, setActiveTool] = useState('pointer');
+  const [activeView, setActiveView] = useState('canvas');
 
   const [elements, setElements] = useState([
     { id: 1, type: 'sticky', color: 'yellow', top: 150, left: 200, rotation: -2, title: 'Design Phase', content: 'Update the hero section typography to match the new brand guidelines. Use Inter for headers.' },
@@ -36,15 +40,21 @@ export default function App() {
 
   return (
     <div className="app-container">
-      <Sidebar />
+      <Sidebar toggleTheme={toggleTheme} theme={theme} onNavigate={setActiveView} activeView={activeView} />
       <main className="main-content">
-        <Toolbar 
-          activeTool={activeTool} 
-          setActiveTool={setActiveTool} 
-          onAddSticky={handleAddSticky}
-        />
-        <Canvas elements={elements} onDelete={handleDeleteElement} />
-        <ChatPanel />
+        {activeView === 'dashboard' ? (
+          <Dashboard />
+        ) : (
+          <>
+            <Toolbar
+              activeTool={activeTool}
+              setActiveTool={setActiveTool}
+              onAddSticky={handleAddSticky}
+            />
+            <Canvas elements={elements} onDelete={handleDeleteElement} />
+            <ChatPanel />
+          </>
+        )}
       </main>
     </div>
   );

@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, FolderKanban, Settings, Users, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, Settings, Users, MessageSquare, Moon, Sun, Grid3x3 } from 'lucide-react';
 
-export default function Sidebar() {
+export default function Sidebar({ toggleTheme, theme, onNavigate, activeView }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -10,12 +10,22 @@ export default function Sidebar() {
         </div>
         <span>SyncBoard</span>
       </div>
-      
+
       <nav className="sidebar-nav">
-        <a href="#" className="nav-item active">
+        <button
+          className={`nav-item ${activeView === 'dashboard' ? 'active' : ''}`}
+          onClick={() => onNavigate('dashboard')}
+        >
+          <Grid3x3 size={20} />
+          <span>Dashboard</span>
+        </button>
+        <button
+          className={`nav-item ${activeView === 'canvas' ? 'active' : ''}`}
+          onClick={() => onNavigate('canvas')}
+        >
           <FolderKanban size={20} />
           <span>Projects</span>
-        </a>
+        </button>
         <a href="#" className="nav-item">
           <Users size={20} />
           <span>Team</span>
@@ -31,6 +41,13 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-footer">
+        <button
+          className="theme-toggle-btn"
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
         <div className="profile-mini">
           <div className="avatar">
             <img src="https://i.pravatar.cc/150?u=a042581f4e29026024d" alt="User" />
