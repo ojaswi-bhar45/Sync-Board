@@ -1,0 +1,12 @@
+{
+  "name": "sync-board",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n BE,FE -c blue,green \"npm run dev --prefix sync-board-b\" \"npm run dev --prefix sync-board-f\"",
+    "dev:backend": "npm run dev --prefix sync-board-b",
+    "dev:frontend": "npm run dev --prefix sync-board-f"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

@@ -1,17 +1,17 @@
 const User = require("../models/User");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const router = require("express").Router();
 
 //Register
 router.post("/signup", async (req, res) => {
   try {
-    let { name, email, password } = req.body;
+    let { username, email, password } = req.body;
 
     let isUser = await User.findOne({ email });
     if (isUser) return res.json({ message: "User is already exits" });
 
-    if (!name || !email || !password)
+    if (!username || !email || !password)
       return res.json({ message: "Please enter all the fields" });
 
     //hashed password
@@ -20,7 +20,7 @@ router.post("/signup", async (req, res) => {
 
     //create user
     let user = await User.create({
-      name,
+      username,
       email,
       password: hashedPassword,
     });
