@@ -25,7 +25,11 @@ router.post("/signup", async (req, res) => {
       password: hashedPassword,
     });
 
-    res.json({ message: "User regiestered successfully", user });
+    let token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
+    res.json({ message: "User regiestered successfully", token, user });
+    console.log(user);
   } catch (err) {
     res.json({ message: err.message });
   }
@@ -56,6 +60,5 @@ router.post("/login", async (req, res) => {
     res.json({ message: err.message });
   }
 });
-
 
 module.exports = router;

@@ -1,7 +1,6 @@
-import React from 'react';
-import { LayoutDashboard, FolderKanban, Settings, Users, MessageSquare, Moon, Sun, Grid3x3 } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, Settings, Users, MessageSquare, Moon, Sun, Grid3x3, LogOut } from 'lucide-react';
 
-export default function Sidebar({ toggleTheme, theme, onNavigate, activeView }) {
+export default function Sidebar({ toggleTheme, theme, onNavigate, activeView, user, onLogout }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -50,14 +49,20 @@ export default function Sidebar({ toggleTheme, theme, onNavigate, activeView }) 
         </button>
         <div className="profile-mini">
           <div className="avatar">
-            <img src="https://i.pravatar.cc/150?u=a042581f4e29026024d" alt="User" />
+            <img
+              src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.username || 'U'}`}
+              alt="User"
+            />
             <div className="status-indicator online"></div>
           </div>
           <div className="profile-info">
-            <span className="profile-name">Alex Rivera</span>
-            <span className="profile-role">Product Designer</span>
+            <span className="profile-name">{user?.username || 'User'}</span>
+            <span className="profile-role">Online</span>
           </div>
         </div>
+        <button className="theme-toggle-btn" onClick={onLogout} title="Logout">
+          <LogOut size={20} />
+        </button>
       </div>
     </aside>
   );

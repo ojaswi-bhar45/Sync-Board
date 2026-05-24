@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, Eye, EyeOff, UserPlus } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const API_BASE = 'http://localhost:5000';
 
 export default function Signup() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [form, setForm] = useState({ username: '', email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -45,7 +47,8 @@ export default function Signup() {
       const data = await res.json();
 
       if (data.user) {
-        navigate('/');
+        if (data.token) login(data.user, data.token);
+        navigate('/dashboard');
       } else {
         setError(data.message || 'Registration failed');
       }
