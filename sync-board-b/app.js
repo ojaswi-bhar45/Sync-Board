@@ -4,6 +4,7 @@ const cors = require("cors");
 const dns = require("dns");
 const authRoute = require("./controllers/authController");
 const projectRoutes = require("./routes/project");
+const profileRoutes = require("./routes/profile");
 
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
@@ -14,6 +15,7 @@ app.use(cors());
 app.use(express.json());
 app.use("/", authRoute);
 app.use("/api", projectRoutes);
+app.use("/", profileRoutes);
 
 mongoose
   .connect(process.env.MONGO_URL)

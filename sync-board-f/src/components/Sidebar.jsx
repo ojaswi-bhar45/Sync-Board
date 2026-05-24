@@ -47,7 +47,7 @@ export default function Sidebar({ toggleTheme, theme, onNavigate, activeView, us
         >
           {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
         </button>
-        <div className="profile-mini">
+        <button className="profile-mini" onClick={() => onNavigate('profile')}>
           <div className="avatar">
             <img
               src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.username || 'U'}`}
@@ -59,7 +59,7 @@ export default function Sidebar({ toggleTheme, theme, onNavigate, activeView, us
             <span className="profile-name">{user?.username || 'User'}</span>
             <span className="profile-role">Online</span>
           </div>
-        </div>
+        </button>
         <button className="theme-toggle-btn" onClick={onLogout} title="Logout">
           <LogOut size={20} />
         </button>

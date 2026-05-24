@@ -4,6 +4,7 @@ import { useTheme } from '../hooks/useTheme';
 import Sidebar from './Sidebar';
 import Dashboard from './Dashboard';
 import Workspace from './Workspace';
+import Profile from './Profile';
 
 export default function HomeLayout() {
   const { user, logout } = useAuth();
@@ -20,7 +21,7 @@ export default function HomeLayout() {
         user={user}
         onLogout={logout}
       />
-      {activeView === 'dashboard' ? <Dashboard /> : <Workspace />}
+      {activeView === 'profile' ? <Profile /> : activeView === 'dashboard' ? <Dashboard /> : <Workspace />}
     </div>
   );
 }
