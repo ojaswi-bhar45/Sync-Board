@@ -33,10 +33,10 @@ export default function Sidebar({ toggleTheme, theme, onNavigate, activeView, us
           <MessageSquare size={20} />
           <span>Messages</span>
         </a>
-        <a href="#" className="nav-item">
+        {/* <a href="#" className="nav-item">
           <Settings size={20} />
           <span>Settings</span>
-        </a>
+        </a> */}
       </nav>
 
       <div className="sidebar-footer">

@@ -3,7 +3,7 @@ import Toolbar from './Toolbar';
 import Canvas from './Whiteboard/Canvas';
 import ChatPanel from './ChatPanel';
 
-export default function Workspace() {
+export default function Workspace({ project }) {
   const [activeTool, setActiveTool] = useState('pointer');
   const [elements, setElements] = useState([
     {
@@ -59,6 +59,11 @@ export default function Workspace() {
 
   return (
     <div className="main-content">
+      {project && (
+        <div className="workspace-header">
+          <span className="workspace-project-name">{project.title}</span>
+        </div>
+      )}
       <Toolbar activeTool={activeTool} setActiveTool={setActiveTool} onAddSticky={handleAddSticky} />
       <Canvas elements={elements} onDelete={handleDelete} />
       <ChatPanel />

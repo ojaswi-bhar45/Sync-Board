@@ -3,12 +3,14 @@ import { useAuth } from '../context/AuthContext';
 import { Plus } from 'lucide-react';
 import ProjectCard from './ProjectCard';
 import NewProjectModal from './NewProjectModal';
+import EditProjectModal from './EditProjectModal';
 import { API } from '../api';
 
-export default function Dashboard() {
+export default function Dashboard({ onOpenProject }) {
   const { user, token } = useAuth();
   const [projects, setProjects] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,6 +33,12 @@ export default function Dashboard() {
 
   const handleCreated = (project) => {
     setProjects((prev) => [project, ...prev]);
+  };
+
+  const handleUpdated = (updated) => {
+    setProjects((prev) =>
+      prev.map((p) => (p._id === updated._id ? updated : p)),
+    );
   };
 
   return (
@@ -71,7 +79,7 @@ export default function Dashboard() {
       ) : (
         <div className="projects-grid">
           {projects.map((project) => (
-            <ProjectCard key={project._id} project={project} />
+            <ProjectCard key={project._id} project={project} onEdit={setEditingProject} onClick={onOpenProject} />
           ))}
         </div>
       )}
@@ -81,6 +89,14 @@ export default function Dashboard() {
           token={token}
           onClose={() => setShowModal(false)}
           onCreated={handleCreated}
+        />
+      )}
+      {editingProject && (
+        <EditProjectModal
+          project={editingProject}
+          token={token}
+          onClose={() => setEditingProject(null)}
+          onUpdated={handleUpdated}
         />
       )}
     </div>
