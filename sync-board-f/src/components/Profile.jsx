@@ -116,7 +116,7 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="profile-container">
+    <div className="profile-container p-4 sm:p-6 lg:p-8 pb-24 sm:pb-24 lg:pb-8">
         <div className="profile-loading">Loading profile...</div>
       </div>
     );
@@ -124,7 +124,7 @@ export default function Profile() {
 
   return (
     <div className="profile-container">
-      <div className="profile-header">
+      <div className="profile-header flex-col sm:flex-row items-center sm:items-center">
         <div className="profile-avatar-large">
           <img
             src={`https://api.dicebear.com/7.x/initials/svg?seed=${profile?.username || "U"}`}
@@ -132,7 +132,7 @@ export default function Profile() {
           />
         </div>
         <div className="profile-header-info">
-          <h1 className="profile-title">{profile?.username || "User"}</h1>
+          <h1 className="profile-title text-center sm:text-left">{profile?.username || "User"}</h1>
           <p className="profile-email-display">{profile?.email || ""}</p>
         </div>
       </div>
@@ -196,7 +196,7 @@ export default function Profile() {
       </div>
 
       <button
-        className="profile-save-btn"
+        className="profile-save-btn max-w-sm lg:max-w-md mx-auto lg:mx-0"
         onClick={handleSave}
         disabled={saving}
       >

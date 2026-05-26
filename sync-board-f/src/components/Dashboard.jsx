@@ -42,7 +42,7 @@ export default function Dashboard({ onOpenProject }) {
   };
 
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container p-4 sm:p-6 lg:p-8 pb-24">
       <div className="dashboard-user-section">
         <img
           src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.username || 'U'}`}

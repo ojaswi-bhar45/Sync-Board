@@ -200,7 +200,7 @@ export default function CreateProject({ onNavigate }) {
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto">
-      <div className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
+      <div className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 lg:pt-10 pb-24 sm:pb-24 lg:pb-10">
         {/* Back button */}
         <button
           onClick={() => onNavigate("feed")}
@@ -229,7 +229,7 @@ export default function CreateProject({ onNavigate }) {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5 pb-24 lg:pb-0">
+            <form onSubmit={handleSubmit} className="space-y-5 pb-36 lg:pb-0">
               {/* Project Title */}
               <SectionCard icon={Heading1} title="Project Title" error={touched.title && errors.title}>
                 <input
@@ -399,7 +399,7 @@ export default function CreateProject({ onNavigate }) {
       </div>
 
       {/* ─── MOBILE STICKY CTA ─── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50">
+      <div className="lg:hidden fixed bottom-14 left-0 right-0 z-50">
         <div className="sticky-cta">
           <button
             type="submit"

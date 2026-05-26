@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send } from 'lucide-react';
 
-export default function ChatPanel() {
-  const [isOpen, setIsOpen] = useState(true);
+export default function ChatPanel({ isOpen: externalOpen, setIsOpen: externalSetOpen }) {
+  const [internalOpen, internalSetOpen] = useState(true);
+  const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setIsOpen = externalSetOpen !== undefined ? externalSetOpen : internalSetOpen;
   const [inputValue, setInputValue] = useState('');
   const chatAreaRef = useRef(null);
 

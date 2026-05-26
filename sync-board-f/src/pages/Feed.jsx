@@ -284,7 +284,7 @@ export default function Feed({ onNavigate }) {
   return (
     <>
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 lg:pt-10 pb-24 sm:pb-24 lg:pb-10">
           {/* ─── Header: Title + Search + Filter ─── */}
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
             <div>
@@ -296,8 +296,8 @@ export default function Feed({ onNavigate }) {
                 Discover and collaborate on amazing projects
               </p>
             </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="feed-search flex-1 sm:w-64">
+            <div className="flex items-center gap-1 sm:gap-2 w-full sm:w-auto">
+              <div className="feed-search flex-1 min-w-0 sm:w-64">
                 <Search size={16} className="text-gray-500 shrink-0" />
                 <input
                   type="text"
@@ -306,11 +306,13 @@ export default function Feed({ onNavigate }) {
                   onChange={handleSearchChange}
                 />
               </div>
-              <button className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-gray-500 hover:text-gray-300 transition-all">
-                <SlidersHorizontal size={16} />
+              <button className="p-2 sm:p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-gray-500 hover:text-gray-300 transition-all">
+                <SlidersHorizontal size={15} className="sm:hidden" />
+                <SlidersHorizontal size={16} className="hidden sm:block" />
               </button>
-              <button className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-gray-500 hover:text-gray-300 transition-all">
-                <ArrowUpDown size={16} />
+              <button className="p-2 sm:p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-gray-500 hover:text-gray-300 transition-all">
+                <ArrowUpDown size={15} className="sm:hidden" />
+                <ArrowUpDown size={16} className="hidden sm:block" />
               </button>
             </div>
           </div>

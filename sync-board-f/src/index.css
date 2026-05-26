@@ -295,6 +295,12 @@ body {
   .main-content {
     margin-left: 0;
   }
+  .nav-item {
+    min-height: 44px;
+  }
+  .profile-mini {
+    min-height: 44px;
+  }
 }
 
 /* Desktop sidebar resets */
@@ -617,18 +623,39 @@ body {
 /* Mobile chat panel */
 @media (max-width: 640px) {
   .floating-chat-panel {
-    left: 12px;
-    right: 12px;
-    top: 12px;
-    bottom: 12px;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
     width: auto;
-    border-radius: 12px;
+    border-radius: 0;
+    border: none;
+    animation: mobileSlideUp 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
   }
   .chat-toggle-btn {
-    bottom: 20px;
+    bottom: 80px;
     right: 20px;
     top: auto;
+    width: 56px;
+    height: 56px;
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.5);
   }
+  .panel-header {
+    padding-top: env(safe-area-inset-top, 12px);
+    height: calc(60px + env(safe-area-inset-top, 12px));
+  }
+  .panel-header .tool-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .chat-input-area {
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@keyframes mobileSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
 .panel-header {
@@ -830,7 +857,6 @@ body {
 .dashboard-container {
   width: 100%;
   height: 100%;
-  padding: 40px;
   overflow-y: auto;
   background-color: var(--bg-dark);
 }
@@ -917,7 +943,7 @@ body {
 
 .projects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   gap: 24px;
   animation: fadeIn 0.3s ease-out;
 }
@@ -1285,7 +1311,6 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  padding: 24px;
   background-color: var(--bg-dark);
 }
 
@@ -1295,7 +1320,6 @@ body {
   background-color: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: 16px;
-  padding: 40px 36px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   animation: fadeIn 0.3s ease-out;
 }
@@ -1463,7 +1487,6 @@ body {
 .profile-container {
   width: 100%;
   height: 100%;
-  padding: 40px;
   overflow-y: auto;
   background-color: var(--bg-dark);
 }
@@ -1974,6 +1997,19 @@ textarea.glass-input {
   border-color: rgba(99, 102, 241, 0.3);
   box-shadow: 0 0 24px rgba(99, 102, 241, 0.08), 0 8px 32px rgba(0, 0, 0, 0.2);
   transform: translateY(-2px);
+}
+
+/* ─── Touch Optimization ─── */
+@media (pointer: coarse) {
+  .feed-card button {
+    touch-action: manipulation;
+  }
+  .filter-tab {
+    touch-action: manipulation;
+  }
+  .floating-cta {
+    touch-action: manipulation;
+  }
 }
 
 /* ─── Empty State ─── */

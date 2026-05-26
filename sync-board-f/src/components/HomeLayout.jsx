@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../hooks/useTheme';
-import { Menu } from 'lucide-react';
+import { Menu, Grid3x3, PlusSquare, User, MessageSquare } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Feed from '../pages/Feed';
 import CreateProject from '../pages/CreateProject';
@@ -16,6 +16,7 @@ export default function HomeLayout() {
   const [activeView, setActiveView] = useState('feed');
   const [selectedProject, setSelectedProject] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const openProject = (project) => {
     setSelectedProject(project);
@@ -63,7 +64,38 @@ export default function HomeLayout() {
           {activeView === 'create' && <CreateProject onNavigate={handleNavigate} />}
           {activeView === 'profile' && <Profile />}
           {activeView === 'workspace' && <Workspace project={selectedProject} />}
-          {activeView !== 'create' && <ChatPanel />}
+          {activeView !== 'create' && <ChatPanel isOpen={chatOpen} setIsOpen={setChatOpen} />}
+
+          {/* ─── Mobile Bottom Tab Bar ─── */}
+          <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden flex items-center justify-around h-14 bg-[var(--bg-sidebar)] border-t border-[var(--border-color)] backdrop-blur-xl bg-opacity-90">
+            {[
+              { view: 'feed', icon: Grid3x3, label: 'Feed' },
+              { view: 'create', icon: PlusSquare, label: 'New' },
+              { view: 'profile', icon: User, label: 'Profile' },
+            ].map(({ view, icon: Icon, label }) => (
+              <button
+                key={view}
+                onClick={() => handleNavigate(view)}
+                className={`flex flex-col items-center justify-center gap-0.5 h-full px-4 transition-colors ${
+                  activeView === view ? 'text-[var(--accent-color)]' : 'text-gray-500'
+                }`}
+                style={{ minHeight: '44px', minWidth: '44px' }}
+              >
+                <Icon size={20} />
+                <span className="text-[10px] font-medium">{label}</span>
+              </button>
+            ))}
+            <button
+              onClick={() => setChatOpen(!chatOpen)}
+              className={`flex flex-col items-center justify-center gap-0.5 h-full px-4 transition-colors ${
+                chatOpen ? 'text-[var(--accent-color)]' : 'text-gray-500'
+              }`}
+              style={{ minHeight: '44px', minWidth: '44px' }}
+            >
+              <MessageSquare size={20} />
+              <span className="text-[10px] font-medium">Chat</span>
+            </button>
+          </nav>
         </div>
       </div>
     </>

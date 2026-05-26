@@ -54,8 +54,8 @@ export default function Login() {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
+    <div className="auth-page p-4 sm:p-6">
+      <div className="auth-card p-6 sm:p-8">
         <div className="auth-header">
           <div className="auth-brand">
             <LogIn size={24} />
