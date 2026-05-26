@@ -2,13 +2,108 @@ const Project = require("../models/Project");
 const auth = require("../middlewares/auth");
 const router = require("express").Router();
 
+const TAG_FILTERS = {
+  ai: [/ai/i, /machine learning/i, /llm/i, /deep learning/i, /neural/i, /gpt/i, /chatgpt/i, /tensorflow/i, /pytorch/i],
+  webdev: [/react/i, /next/i, /vue/i, /node/i, /tailwind/i, /javascript/i, /typescript/i, /css/i, /html/i, /angular/i, /svelte/i, /express/i, /django/i, /flask/i],
+};
+
+function buildFilter(query) {
+  const filter = { visibility: "public" };
+
+  const tag = query.tag;
+  if (tag && TAG_FILTERS[tag]) {
+    filter.techStack = { $in: TAG_FILTERS[tag] };
+  }
+
+  const search = query.search;
+  if (search) {
+    const regex = new RegExp(search, "i");
+    filter.$or = [{ title: regex }, { description: regex }];
+  }
+
+  return filter;
+}
+
+function buildSort(query) {
+  return query.sort === "trending" ? { likesCount: -1, timestamp: -1 } : { timestamp: -1 };
+}
+
 router.get("/feed", async (req, res) => {
   try {
-    const projects = await Project.find({ visibility: "public" })
-      .populate("userId", "username email")
-      .populate("comments.user", "username email")
-      .sort({ timestamp: -1 });
-    res.json(projects);
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 12));
+    const skip = (page - 1) * limit;
+    const filter = buildFilter(req.query);
+    const sort = buildSort(req.query);
+
+    const [projects, total] = await Promise.all([
+      Project.aggregate([
+        { $match: filter },
+        { $addFields: { likesCount: { $size: { $ifNull: ["$likes", []] } } } },
+        { $sort: sort },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $lookup: {
+            from: "users",
+            localField: "userId",
+            foreignField: "_id",
+            as: "userId",
+          },
+        },
+        { $unwind: { path: "$userId", preserveNullAndEmptyArrays: true } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "comments.user",
+            foreignField: "_id",
+            as: "commentUsers",
+          },
+        },
+        {
+          $addFields: {
+            comments: {
+              $map: {
+                input: "$comments",
+                as: "c",
+                in: {
+                  _id: "$$c._id",
+                  text: "$$c.text",
+                  createdAt: "$$c.createdAt",
+                  user: {
+                    $arrayElemAt: [
+                      {
+                        $filter: {
+                          input: "$commentUsers",
+                          as: "cu",
+                          cond: { $eq: ["$$cu._id", "$$c.user"] },
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+        {
+          $project: {
+            commentUsers: 0,
+            likesCount: 0,
+          },
+        },
+      ]),
+      Project.countDocuments(filter),
+    ]);
+
+    res.json({
+      projects,
+      page,
+      totalPages: Math.ceil(total / limit),
+      total,
+      hasMore: page * limit < total,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

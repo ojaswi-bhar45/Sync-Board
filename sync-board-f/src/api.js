@@ -11,8 +11,11 @@ async function handleResponse(res) {
   return data;
 }
 
-export function getFeedProjects() {
-  return fetch(`${API}/api/projects/feed`, { headers: headers() }).then(handleResponse);
+export function getFeedProjects({ page = 1, limit = 12, sort = "recent", search = "", tag = "" } = {}) {
+  const params = new URLSearchParams({ page, limit, sort });
+  if (search) params.set("search", search);
+  if (tag) params.set("tag", tag);
+  return fetch(`${API}/api/projects/feed?${params}`, { headers: headers() }).then(handleResponse);
 }
 
 export function createProject(token, body) {

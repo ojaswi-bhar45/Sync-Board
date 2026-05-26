@@ -2,7 +2,28 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "../components/Toast";
 import { createProject } from "../api";
-import { ArrowLeft, Loader2, Plus, X } from "lucide-react";
+import {
+  ArrowLeft, Loader2, Plus, X,
+  Heading1, FileText, Layers, StickyNote, Tag,
+  Lightbulb, Rocket, TrendingUp, ChevronRight,
+  Sparkles,
+} from "lucide-react";
+
+const TRENDING_TAGS = ["React", "Python", "Node.js", "TypeScript", "Go", "Rust", "Next.js", "Tailwind", "MongoDB"];
+
+const PROJECT_TIPS = [
+  { icon: Lightbulb, title: "Be specific in descriptions", desc: "Instead of 'A social media app', try 'A real-time collaborative project management platform'." },
+  { icon: Tag, title: "Use relevant tech tags", desc: "Tag the technologies you're using so developers with the right skills can find you." },
+  { icon: Rocket, title: "Add collaboration notes", desc: "Tell potential collaborators what you need — frontend help? backend? design?" },
+  { icon: Heading1, title: "Keep title under 60 chars", desc: "Short, descriptive titles get more visibility and are easier to browse." },
+];
+
+const HOW_IT_WORKS = [
+  { step: 1, text: "Post your project idea" },
+  { step: 2, text: "Developers discover it in the feed" },
+  { step: 3, text: "They comment or send join requests" },
+  { step: 4, text: "Accept teammates and build together" },
+];
 
 function useAutoResize(ref) {
   useEffect(() => {
@@ -45,13 +66,13 @@ function TechStackInput({ tags, onChange }) {
   const removeTag = (tag) => onChange(tags.filter((t) => t !== tag));
 
   return (
-    <div className="w-full bg-white/[0.05] border border-white/10 rounded-lg px-4 py-2.5 text-sm transition-all focus-within:border-indigo-500/50">
+    <div className="w-full glass-input transition-all duration-200">
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
           {tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-indigo-500/15 text-indigo-300 border border-indigo-500/25"
             >
               {tag}
               <button
@@ -85,9 +106,25 @@ function CharCounter({ current, max }) {
     ratio > 0.75 ? "text-yellow-400" :
     "text-gray-500";
   return (
-    <span className={`text-xs ${color} transition-colors`}>
+    <span className={`text-xs ${color} transition-colors font-medium`}>
       {current}/{max}
     </span>
+  );
+}
+
+function SectionCard({ icon: Icon, title, children, error }) {
+  return (
+    <div className="glass-card">
+      <div className="flex items-center gap-2.5 mb-4">
+        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+          <Icon size={16} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-semibold text-white">{title}</span>
+        </div>
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -155,114 +192,234 @@ export default function CreateProject({ onNavigate }) {
   };
 
   const inputClass = (name) =>
-    `w-full bg-white/[0.05] border rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none transition-all resize-none ${
+    `w-full glass-input transition-all duration-200 ${
       errors[name] && touched[name]
         ? "border-red-500/60"
-        : "border-white/10 focus:border-indigo-500/50"
+        : ""
     }`;
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto">
-      <div className="flex-1 w-full max-w-xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      <div className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
+        {/* Back button */}
         <button
           onClick={() => onNavigate("feed")}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-white transition-colors mb-8"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-white transition-colors mb-6 group"
         >
-          <ArrowLeft size={15} />
+          <ArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
           Back to Feed
         </button>
 
-        <h1 className="text-2xl font-semibold text-white mb-1">Create Project</h1>
-        <p className="text-sm text-gray-500 mb-8">
-          Share your project idea with the community
-        </p>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 lg:gap-10">
+          {/* ─── LEFT COLUMN: Form ─── */}
           <div>
-            <label className="block text-sm text-gray-400 mb-1.5">
-              Project Title <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              name="title"
-              value={form.title}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              placeholder="Enter your project title"
-              className={inputClass("title")}
-            />
-            {errors.title && touched.title && (
-              <p className="text-xs text-red-400 mt-1">{errors.title}</p>
-            )}
+            {/* Header */}
+            <div className="mb-8">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                  <Sparkles size={20} className="text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold gradient-text">Create Project</h1>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    Share your project idea and find collaborators
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5 pb-24 lg:pb-0">
+              {/* Project Title */}
+              <SectionCard icon={Heading1} title="Project Title" error={touched.title && errors.title}>
+                <input
+                  type="text"
+                  name="title"
+                  value={form.title}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  placeholder="Enter your project title"
+                  className={inputClass("title")}
+                />
+                {errors.title && touched.title && (
+                  <p className="text-xs text-red-400 mt-2 flex items-center gap-1">
+                    <span className="w-1 h-1 rounded-full bg-red-400 shrink-0" />
+                    {errors.title}
+                  </p>
+                )}
+              </SectionCard>
+
+              {/* Description */}
+              <SectionCard icon={FileText} title="Description">
+                <textarea
+                  ref={descRef}
+                  name="description"
+                  value={form.description}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  placeholder="Describe your project idea in detail — what problem does it solve? What features does it have? What's the tech stack?"
+                  rows={5}
+                  className={inputClass("description") + " min-h-[120px]"}
+                />
+                <div className="flex items-center justify-between mt-2">
+                  {errors.description && touched.description ? (
+                    <p className="text-xs text-red-400 flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-red-400 shrink-0" />
+                      {errors.description}
+                    </p>
+                  ) : <span />}
+                  <CharCounter current={form.description.length} max={DESC_MAX} />
+                </div>
+              </SectionCard>
+
+              {/* Tech Stack */}
+              <SectionCard icon={Layers} title="Tech Stack">
+                <TechStackInput tags={techTags} onChange={setTechTags} />
+                <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-gray-600 shrink-0" />
+                  Press comma or Enter after each technology
+                </p>
+              </SectionCard>
+
+              {/* Notes */}
+              <SectionCard icon={StickyNote} title="Notes">
+                <textarea
+                  ref={noteRef}
+                  name="note"
+                  value={form.note}
+                  onChange={handleChange}
+                  placeholder="Any additional notes for collaborators — what skills do you need? What's your timeline?"
+                  rows={3}
+                  className={inputClass("note") + " min-h-[80px]"}
+                />
+              </SectionCard>
+
+              {/* Desktop CTA */}
+              <div className="hidden lg:block pt-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="gradient-btn w-full"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 size={18} className="animate-spin" />
+                      Creating Project...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <Plus size={18} />
+                      Create Project
+                    </span>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
 
-          <div>
-            <label className="block text-sm text-gray-400 mb-1.5">
-              Description <span className="text-red-400">*</span>
-            </label>
-            <textarea
-              ref={descRef}
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              placeholder="Describe your project idea in detail..."
-              rows={4}
-              className={inputClass("description") + " min-h-[100px]"}
-            />
-            <div className="flex items-center justify-between mt-1">
-              {errors.description && touched.description ? (
-                <p className="text-xs text-red-400">{errors.description}</p>
-              ) : <span />}
-              <CharCounter current={form.description.length} max={DESC_MAX} />
+          {/* ─── RIGHT COLUMN: Tips & Info ─── */}
+          <div className="space-y-5 lg:pt-16">
+            {/* Project Tips */}
+            <div className="glass-card">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                  <Lightbulb size={16} />
+                </div>
+                <span className="text-sm font-semibold text-white">Project Tips</span>
+              </div>
+              <div className="space-y-4">
+                {PROJECT_TIPS.map((tip, i) => (
+                  <div key={i} className="flex gap-3">
+                    <div className="w-6 h-6 rounded-md bg-white/[0.04] flex items-center justify-center shrink-0 mt-0.5">
+                      <tip.icon size={13} className="text-indigo-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white/90">{tip.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{tip.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* How Collaboration Works */}
+            <div className="glass-card">
+              <div className="flex items-center gap-2.5 mb-5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                  <Rocket size={16} />
+                </div>
+                <span className="text-sm font-semibold text-white">How Collaboration Works</span>
+              </div>
+              <div className="space-y-3">
+                {HOW_IT_WORKS.map((item) => (
+                  <div key={item.step} className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                      <span className="text-[11px] font-bold text-indigo-400">{item.step}</span>
+                    </div>
+                    <p className="text-sm text-gray-400">{item.text}</p>
+                    {item.step < 4 && <ChevronRight size={14} className="text-gray-600 ml-auto shrink-0" />}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 p-3 rounded-xl bg-gradient-to-r from-indigo-500/5 to-purple-500/5 border border-indigo-500/10">
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Your project is <span className="text-indigo-400 font-medium">public by default</span> — maximum visibility means more potential collaborators.
+                </p>
+              </div>
+            </div>
+
+            {/* Trending Technologies */}
+            <div className="glass-card">
+              <div className="flex items-center gap-2.5 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+                  <TrendingUp size={16} />
+                </div>
+                <span className="text-sm font-semibold text-white">Trending Technologies</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {TRENDING_TAGS.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => {
+                      if (!techTags.includes(tag)) {
+                        setTechTags((prev) => [...prev, tag]);
+                      }
+                    }}
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/[0.04] border border-white/[0.06] text-gray-400 hover:text-indigo-300 hover:border-indigo-500/30 hover:bg-indigo-500/10 transition-all duration-200"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-600 mt-3">Click a tag to add it to your tech stack</p>
             </div>
           </div>
+        </div>
+      </div>
 
-          <div>
-            <label className="block text-sm text-gray-400 mb-1.5">
-              Tech Stack
-            </label>
-            <TechStackInput tags={techTags} onChange={setTechTags} />
-            <p className="text-xs text-gray-500 mt-1">
-              Press comma or Enter after each technology
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-400 mb-1.5">
-              Note <span className="text-gray-500 font-normal">(optional)</span>
-            </label>
-            <textarea
-              ref={noteRef}
-              name="note"
-              value={form.note}
-              onChange={handleChange}
-              placeholder="Any additional notes for collaborators..."
-              rows={2}
-              className={inputClass("note") + " min-h-[60px]"}
-            />
-          </div>
-
-          <div className="!mt-10">
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 hover:brightness-110 disabled:brightness-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-all active:scale-[0.98]"
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Plus size={16} />
-                  Create Project
-                </>
-              )}
-            </button>
-          </div>
-        </form>
+      {/* ─── MOBILE STICKY CTA ─── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50">
+        <div className="sticky-cta">
+          <button
+            type="submit"
+            disabled={loading}
+            onClick={handleSubmit}
+            className="gradient-btn w-full"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 size={18} className="animate-spin" />
+                Creating Project...
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                <Plus size={18} />
+                Create Project
+              </span>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
