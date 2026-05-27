@@ -11,20 +11,18 @@ const userSchema = new mongoose.Schema({
   contactNumber: {
     type: String,
     default: null,
-    required: true,
   },
   address: {
     type: String,
     default: null,
-    required: true,
   },
   linkedInProfile: {
     type: String,
-    required: true,
+    default: null,
   },
   githubProfile: {
     type: String,
-    required: true,
+    default: null,
   },
   Timestamp: { type: Date, default: Date.now },
 });

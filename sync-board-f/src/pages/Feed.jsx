@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import ProjectCard from "../components/ProjectCard";
@@ -11,7 +12,8 @@ import {
 } from "../api";
 import {
   Loader2, FolderOpen, Search, Plus, Sparkles,
-  SlidersHorizontal, ArrowUpDown,
+  SlidersHorizontal, Home, Compass, Bell, MessageSquare,
+  Hash, Users, Flame, Eye,
 } from "lucide-react";
 
 const PAGE_LIMIT = 12;
@@ -27,17 +29,143 @@ const FILTERS = [
   { key: "opensource", label: "Open Source" },
 ];
 
-function filterParams(activeFilter, sortBy) {
+const TRENDING_TAGS = [
+  { tag: "react", count: 342 },
+  { tag: "javascript", count: 285 },
+  { tag: "nodejs", count: 198 },
+  { tag: "python", count: 156 },
+  { tag: "nextjs", count: 134 },
+  { tag: "typescript", count: 112 },
+  { tag: "tailwind", count: 89 },
+  { tag: "mongodb", count: 76 },
+];
+
+const TOP_CONTRIBUTORS = [
+  { name: "Alex Rivera", projects: 12, avatar: "AR" },
+  { name: "Sarah Chen", projects: 9, avatar: "SC" },
+  { name: "Mike Johnson", projects: 7, avatar: "MJ" },
+  { name: "Emma Wilson", projects: 5, avatar: "EW" },
+  { name: "David Kim", projects: 4, avatar: "DK" },
+];
+
+function filterParams(activeFilter) {
   const params = {};
-  if (activeFilter === "trending" || sortBy === "trending") params.sort = "trending";
-  if (activeFilter === "ai") { params.tag = "ai"; params.sort = "recent"; }
+  if (activeFilter === "trending") params.sort = "trending";
+  else if (activeFilter === "ai") { params.tag = "ai"; params.sort = "recent"; }
   else if (activeFilter === "webdev") { params.tag = "webdev"; params.sort = "recent"; }
-  else if (!params.sort) params.sort = "recent";
+  else params.sort = "recent";
   return params;
 }
 
+function FeedLeftNav({ onNavigate, user, activeView }) {
+  const links = [
+    { icon: Home, view: "feed", label: "Home" },
+    { icon: Compass, view: "explore", label: "Explore" },
+    { icon: Bell, view: "notifications", label: "Notifications" },
+    { icon: MessageSquare, view: "messages", label: "Messages" },
+  ];
+
+  return (
+    <nav className="feed-left-nav">
+      <div className="feed-left-nav-inner">
+        <div className="feed-left-nav-links">
+          {links.map(({ icon: Icon, view, label }) => (
+            <button
+              key={view}
+              onClick={() => onNavigate(view)}
+              className={`feed-left-nav-btn ${activeView === view ? "active" : ""}`}
+              title={label}
+            >
+              <Icon size={20} />
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => onNavigate("profile")}
+          className="feed-left-nav-avatar"
+          title="Profile"
+        >
+          <div className="feed-left-avatar-ring">
+            <span className="feed-left-avatar-text">
+              {(user?.username || "U")[0].toUpperCase()}
+            </span>
+          </div>
+          <div className="feed-left-online-dot" />
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+function FeedRightPanel() {
+  const [following, setFollowing] = useState(new Set());
+
+  const toggleFollow = (name) => {
+    setFollowing((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
+  return (
+    <aside className="feed-right-panel">
+      {/* Trending Tags */}
+      <div className="widget-card">
+        <div className="widget-header">
+          <Flame size={16} className="text-orange-400" />
+          <span className="widget-title">Trending Tags</span>
+        </div>
+        <div className="widget-divider" />
+        <div className="widget-tags">
+          {TRENDING_TAGS.map(({ tag, count }) => (
+            <button key={tag} className="trending-tag">
+              <Hash size={12} className="trending-tag-hash" />
+              <span className="trending-tag-name">{tag}</span>
+              <span className="trending-tag-count">{count}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Top Contributors */}
+      <div className="widget-card">
+        <div className="widget-header">
+          <Users size={16} className="text-indigo-400" />
+          <span className="widget-title">Top Contributors</span>
+        </div>
+        <div className="widget-divider" />
+        <div className="widget-contributors">
+          {TOP_CONTRIBUTORS.map((c) => {
+            const isFollowing = following.has(c.name);
+            return (
+              <div key={c.name} className="contributor-row">
+                <div className="contributor-avatar">
+                  <span>{c.avatar}</span>
+                </div>
+                <div className="contributor-info">
+                  <span className="contributor-name">{c.name}</span>
+                  <span className="contributor-projects">{c.projects} projects</span>
+                </div>
+                <button
+                  onClick={() => toggleFollow(c.name)}
+                  className={`follow-btn ${isFollowing ? "following" : ""}`}
+                >
+                  {isFollowing ? "Following" : "Follow"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+    </aside>
+  );
+}
+
 export default function Feed({ onNavigate }) {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [trendingProjects, setTrendingProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -88,30 +216,28 @@ export default function Feed({ onNavigate }) {
     localStorage.setItem("savedProjects", JSON.stringify([...set]));
   };
 
-  // Fetch main projects
   const fetchProjects = useCallback(async (filter, search, pageNum = 1) => {
-    const isInitial = pageNum === 1;
-    if (isInitial) setLoading(true);
+    const params = { page: pageNum, limit: PAGE_LIMIT, ...filterParams(filter) };
+    if (search) params.search = search;
+    const data = await getFeedProjects(params);
+    return data;
+  }, []);
+
+  const loadInitialProjects = useCallback(async (filter, search) => {
+    setLoading(true);
     try {
-      const params = { page: pageNum, limit: PAGE_LIMIT, ...filterParams(filter) };
-      if (search) params.search = search;
-      const data = await getFeedProjects(params);
-      if (isInitial) {
-        setProjects(data.projects);
-        setPage(1);
-        setHasMore(data.hasMore);
-        setLikedIds(buildLikedSet(data.projects));
-      } else {
-        return data;
-      }
+      const data = await fetchProjects(filter, search);
+      setProjects(data.projects);
+      setPage(1);
+      setHasMore(data.hasMore);
+      setLikedIds(buildLikedSet(data.projects));
     } catch (err) {
       toast(err.message, "error");
     } finally {
-      if (isInitial) setLoading(false);
+      setLoading(false);
     }
-  }, [buildLikedSet]);
+  }, [fetchProjects, buildLikedSet]);
 
-  // Fetch trending projects (only on mount)
   const fetchTrending = useCallback(async () => {
     try {
       const data = await getFeedProjects({ page: 1, limit: TRENDING_LIMIT, sort: "trending" });
@@ -121,19 +247,16 @@ export default function Feed({ onNavigate }) {
     }
   }, []);
 
-  // Initial load
   useEffect(() => {
-    fetchProjects("all", "");
+    loadInitialProjects("all", "");
     fetchTrending();
     setSavedIds(buildSavedSet());
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Refetch when filter or search changes
   useEffect(() => {
-    fetchProjects(activeFilter, searchQuery);
+    loadInitialProjects(activeFilter, searchQuery);
   }, [activeFilter, searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Debounced search
   const handleSearchChange = (e) => {
     const val = e.target.value;
     setSearchInput(val);
@@ -143,7 +266,6 @@ export default function Feed({ onNavigate }) {
     }, SEARCH_DEBOUNCE);
   };
 
-  // Infinite scroll: fetch next page
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || loading) return;
     setLoadingMore(true);
@@ -176,7 +298,6 @@ export default function Feed({ onNavigate }) {
     }
   }, [loadingMore, hasMore, loading, page, activeFilter, searchQuery, extractUserId]);
 
-  // IntersectionObserver for infinite scroll
   useEffect(() => {
     if (loading) return;
     const el = sentinelRef.current;
@@ -279,154 +400,163 @@ export default function Feed({ onNavigate }) {
     }
   };
 
+  const handleViewProject = (project) => {
+    onNavigate("workspace", project);
+  };
+
   const showTrending = trendingProjects.length > 0 && activeFilter === "all" && !searchQuery;
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 lg:pt-10 pb-24 sm:pb-24 lg:pb-10">
-          {/* ─── Header: Title + Search + Filter ─── */}
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2.5">
-                Project Feed
-                <Sparkles size={20} className="text-indigo-400" />
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Discover and collaborate on amazing projects
-              </p>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2 w-full sm:w-auto">
-              <div className="feed-search flex-1 min-w-0 sm:w-64">
-                <Search size={16} className="text-gray-500 shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search projects..."
-                  value={searchInput}
-                  onChange={handleSearchChange}
-                />
-              </div>
-              <button className="p-2 sm:p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-gray-500 hover:text-gray-300 transition-all">
-                <SlidersHorizontal size={15} className="sm:hidden" />
-                <SlidersHorizontal size={16} className="hidden sm:block" />
-              </button>
-              <button className="p-2 sm:p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-gray-500 hover:text-gray-300 transition-all">
-                <ArrowUpDown size={15} className="sm:hidden" />
-                <ArrowUpDown size={16} className="hidden sm:block" />
-              </button>
-            </div>
-          </div>
+      <div className="feed-3col-layout">
+        {/* Left Mini Sidebar */}
+        <FeedLeftNav onNavigate={onNavigate} user={user} activeView="feed" />
 
-          {/* ─── Filter Tabs ─── */}
-          <div className="flex gap-1 mb-6 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-            {FILTERS.map((f) => (
-              <button
-                key={f.key}
-                onClick={() => setActiveFilter(f.key)}
-                className={`filter-tab ${activeFilter === f.key ? "active" : ""}`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          {/* ─── Trending Section ─── */}
-          {showTrending && (
-            <div className="mb-8">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-sm font-semibold text-white">🔥 Trending</span>
-                <span className="text-xs text-gray-500">Popular projects right now</span>
+        {/* Center Feed */}
+        <div className="feed-center">
+          <div className="feed-center-scroll">
+            {/* ─── Header ─── */}
+            <div className="feed-header">
+              <div className="feed-header-left">
+                <h1 className="feed-title">
+                  Project Feed
+                  <Sparkles size={22} className="feed-title-icon" />
+                </h1>
+                <p className="feed-subtitle">Discover and collaborate on amazing projects</p>
               </div>
-              <div className="trending-scroll">
-                {trendingProjects.map((p) => (
-                  <ProjectCard
-                    key={p._id}
-                    project={p}
-                    compact
-                    isLiked={likedIds.has(p._id)}
-                    onLike={handleLike}
-                    onRequest={(project) => setReqModal({ open: true, project })}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ─── Main Grid ─── */}
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 size={36} className="text-indigo-400 animate-spin mb-4" />
-              <p className="text-gray-500 text-sm">Loading projects...</p>
-            </div>
-          ) : projects.length === 0 ? (
-            <div className="empty-state-glow flex flex-col items-center justify-center py-20">
-              <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-5">
-                <FolderOpen size={32} className="text-indigo-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-1.5">No projects found</h3>
-              <p className="text-sm text-gray-500 mb-6 text-center max-w-sm">
-                {searchQuery
-                  ? "Try adjusting your search or filters"
-                  : "Be the first to create a project and find collaborators"}
-              </p>
-              <button
-                onClick={() => onNavigate("create")}
-                className="gradient-btn inline-flex items-center gap-2"
-              >
-                <Plus size={16} />
-                Create your first project
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
-                {projects.map((project, index) => (
-                  <div
-                    key={project._id}
-                    className="animate-[fadeIn_0.3s_ease-out_both]"
-                    style={{ animationDelay: `${Math.min(index % PAGE_LIMIT, 6) * 40}ms` }}
-                  >
-                    <ProjectCard
-                      project={project}
-                      isLiked={likedIds.has(project._id)}
-                      isSaved={savedIds.has(project._id)}
-                      onLike={handleLike}
-                      onSave={handleSave}
-                      onComment={handleComment}
-                      onRequest={(p) => setReqModal({ open: true, project: p })}
-                      likeLoading={likeLoading === project._id}
-                      commentLoading={commentLoading === project._id}
+              <div className="feed-header-right">
+                <div className="feed-search-wrapper">
+                  <div className="feed-search">
+                    <Search size={16} className="feed-search-icon" />
+                    <input
+                      type="text"
+                      placeholder="Search projects..."
+                      value={searchInput}
+                      onChange={handleSearchChange}
                     />
                   </div>
-                ))}
+                </div>
+                <button
+                  onClick={() => onNavigate("create")}
+                  className="new-post-btn"
+                >
+                  <Plus size={18} />
+                  <span className="new-post-btn-text">New Post</span>
+                </button>
+                <button className="feed-filter-btn" title="Filters">
+                  <SlidersHorizontal size={18} />
+                </button>
               </div>
+            </div>
 
-              {/* Sentinel for infinite scroll */}
-              <div ref={sentinelRef} className="flex items-center justify-center py-8">
-                {loadingMore ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <Loader2 size={22} className="text-indigo-400 animate-spin" />
-                    <span className="text-sm text-gray-500">Loading more projects...</span>
-                  </div>
-                ) : hasMore ? (
-                  <span className="text-sm text-gray-600">Scroll for more</span>
-                ) : (
-                  <span className="text-sm text-gray-600">You've reached the end</span>
-                )}
+            {/* ─── Filter Tabs ─── */}
+            <div className="feed-tabs">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setActiveFilter(f.key)}
+                  className={`feed-tab ${activeFilter === f.key ? "active" : ""}`}
+                >
+                  {f.label}
+                  {activeFilter === f.key && <div className="feed-tab-glow" />}
+                </button>
+              ))}
+            </div>
+
+            {/* ─── Trending Section ─── */}
+            {showTrending && (
+              <div className="feed-trending-section">
+                <div className="feed-trending-header">
+                  <Flame size={16} className="text-orange-400" />
+                  <span className="feed-trending-title">Trending</span>
+                  <span className="feed-trending-subtitle">Popular projects right now</span>
+                </div>
+                <div className="trending-scroll">
+                  {trendingProjects.map((p) => (
+                    <ProjectCard
+                      key={p._id}
+                      project={p}
+                      compact
+                      isLiked={likedIds.has(p._id)}
+                      onLike={handleLike}
+                      onRequest={(project) => setReqModal({ open: true, project })}
+                    />
+                  ))}
+                </div>
               </div>
-            </>
-          )}
+            )}
+
+            {/* ─── Main Cards ─── */}
+            {loading ? (
+              <div className="feed-loading">
+                <Loader2 size={36} className="feed-spinner" />
+                <p className="feed-loading-text">Loading projects...</p>
+              </div>
+            ) : projects.length === 0 ? (
+              <div className="feed-empty">
+                <div className="feed-empty-icon">
+                  <FolderOpen size={32} className="text-indigo-400" />
+                </div>
+                <h3 className="feed-empty-title">No projects found</h3>
+                <p className="feed-empty-desc">
+                  {searchQuery
+                    ? "Try adjusting your search or filters"
+                    : "Be the first to create a project and find collaborators"}
+                </p>
+                <button
+                  onClick={() => onNavigate("create")}
+                  className="gradient-btn inline-flex items-center gap-2"
+                >
+                  <Plus size={16} />
+                  Create your first project
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="feed-cards">
+                  {projects.map((project, index) => (
+                    <div
+                      key={project._id}
+                      className="feed-card-wrapper"
+                      style={{ animationDelay: `${Math.min(index % PAGE_LIMIT, 6) * 40}ms` }}
+                    >
+                      <ProjectCard
+                        project={project}
+                        isLiked={likedIds.has(project._id)}
+                        isSaved={savedIds.has(project._id)}
+                        onLike={handleLike}
+                        onSave={handleSave}
+                        onComment={handleComment}
+                        onRequest={(p) => setReqModal({ open: true, project: p })}
+                        onViewProject={handleViewProject}
+                        likeLoading={likeLoading === project._id}
+                        commentLoading={commentLoading === project._id}
+                        showThumbnail={index % 3 === 1}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div ref={sentinelRef} className="feed-sentinel">
+                  {loadingMore ? (
+                    <div className="feed-sentinel-inner">
+                      <Loader2 size={20} className="feed-spinner-sm" />
+                      <span>Loading more projects...</span>
+                    </div>
+                  ) : hasMore ? (
+                    <span className="feed-sentinel-text">Scroll for more</span>
+                  ) : (
+                    <span className="feed-sentinel-text">You've reached the end</span>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* ─── Floating CTA ─── */}
-      <button
-        onClick={() => onNavigate("create")}
-        className="floating-cta hidden sm:flex"
-        title="Create Project"
-      >
-        <Plus size={24} />
-      </button>
+        {/* Right Insights Panel */}
+        <FeedRightPanel />
+      </div>
 
       <RequestModal
         isOpen={reqModal.open}

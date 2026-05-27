@@ -23,9 +23,13 @@ export default function HomeLayout() {
     setActiveView('workspace');
   };
 
-  const handleNavigate = (view) => {
+  const handleNavigate = (view, project) => {
     if (view === 'canvas') view = 'workspace';
-    if (view !== 'workspace') setSelectedProject(null);
+    if (view === 'workspace' && project) {
+      setSelectedProject(project);
+    } else if (view !== 'workspace') {
+      setSelectedProject(null);
+    }
     setActiveView(view);
     setSidebarOpen(false);
   };
