@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-Sync Board is a collaborative whiteboard application with user authentication. It follows a **client-server architecture** with a React frontend communicating with an Express REST API over HTTP.
+Sync Board is a developer collaboration platform where users can discover projects, post ideas, and request to join teams. It follows a **client-server architecture** with a React SPA communicating with an Express REST API over HTTP.
 
 ### Tech Stack
 
@@ -16,44 +16,46 @@ Sync Board is a collaborative whiteboard application with user authentication. I
 | **Build tool** | Vite 8 |
 | **Routing** | react-router-dom 7 |
 | **Icons** | lucide-react |
-| **Styling** | Pure CSS with CSS custom properties |
+| **Styling** | Pure CSS (~3200 lines) with CSS custom properties |
 
 ---
 
 ## 2. System Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                     Browser                          │
-│  ┌───────────────────────────────────────────────┐  │
-│  │           React SPA (:5173)                    │  │
-│  │  ┌──────────┐  ┌──────────┐  ┌─────────────┐  │  │
-│  │  │  Login   │  │  Signup  │  │  Dashboard   │  │  │
-│  │  │  Page    │  │  Page    │  │  (placeholder)│  │  │
-│  │  └────┬─────┘  └────┬─────┘  └─────────────┘  │  │
-│  │       │              │                          │  │
-│  │       └──────────────┘                          │  │
-│  │                  │                              │  │
-│  │            fetch / POST                         │  │
-│  └──────────────────┼──────────────────────────────┘  │
-└─────────────────────┼─────────────────────────────────┘
-                      │ HTTP (JSON)
-                      ▼
-┌─────────────────────────────────────────────────────┐
-│           Express Server (:5000)                     │
-│  ┌──────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │ CORS     │  │ JSON Parser  │  │ Auth Router   │  │
-│  │ Middleware│  │ Middleware   │  │ /signup       │  │
-│  │          │  │              │  │ /login        │  │
-│  └──────────┘  └──────────────┘  └──────┬───────┘  │
-│                                         │           │
-│                                  Mongoose ODM       │
-│                                         │           │
-└─────────────────────────────────────────┼───────────┘
-                                          │
-                                    MongoDB Atlas
-                                          │
-                                    (Cloud Cluster)
+┌──────────────────────────────────────────────────────────┐
+│                        Browser                            │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │              React SPA (:5173)                      │  │
+│  │  ┌──────┐ ┌────────┐ ┌──────────┐ ┌───────────┐   │  │
+│  │  │Login │ │ Signup │ │  Feed    │ │ Workspace │   │  │
+│  │  │Page  │ │  Page  │ │ (3-col)  │ │  (TBD)    │   │  │
+│  │  └──┬───┘ └───┬────┘ └────┬─────┘ └───────────┘   │  │
+│  │     │          │           │                        │  │
+│  │     └──────────┘    + AuthContext (JWT)             │  │
+│  └─────────────────────┬───────────────────────────────┘  │
+└────────────────────────┼──────────────────────────────────┘
+                         │ HTTP (JSON)
+                         ▼
+┌──────────────────────────────────────────────────────────┐
+│              Express Server (:5000)                       │
+│  ┌──────────┐ ┌──────────────┐ ┌──────────┐ ┌────────┐ │
+│  │ CORS     │ │ JSON Parser  │ │  Auth    │ │  Auth  │ │
+│  │ Middleware│ │ Middleware   │ │  Routes  │ │ Middle │ │
+│  │          │ │              │ │ /signup  │ │ -ware  │ │
+│  │          │ │              │ │ /login   │ │ JWT    │ │
+│  └──────────┘ └──────────────┘ └────┬─────┘ └────────┘ │
+│          ┌──────────────────────────┼──────────────────┐│
+│          │   /api/projects/*        │  /api/*           ││
+│          │  feed, request, comment  │  project CRUD     ││
+│          └──────────────────────────┴──────────────────┘│
+│                         │                                │
+│                   Mongoose ODM                            │
+│                         │                                │
+└─────────────────────────┼────────────────────────────────┘
+                          │
+                    MongoDB Atlas
+                    (Cloud Cluster)
 ```
 
 ---
@@ -67,47 +69,66 @@ sync-board/                          # Root (monorepo)
 ├── package-lock.json
 │
 ├── sync-board-b/                    # Backend
-│   ├── app.js                       # Express entry point
-│   ├── package.json                 # Dependencies: express, mongoose, bcryptjs, etc.
+│   ├── app.js                       # Express entry point (mounts all routes)
+│   ├── package.json
 │   ├── .env                         # PORT, MONGO_URL, JWT_SECRET
 │   ├── .gitignore
 │   ├── controllers/
-│   │   └── authController.js        # Signup + login route handlers
+│   │   └── authController.js        # POST /signup, POST /login
 │   ├── models/
-│   │   └── User.js                  # Mongoose User schema
+│   │   ├── User.js                  # username, email, password, optional profile fields
+│   │   └── Project.js               # title, description, techStack, likes, comments,
+│   │                                #   members, joinRequest[], status, visibility
 │   ├── routes/
+│   │   ├── feed.js                  # GET /feed, POST /create, PUT /like/:id,
+│   │   │                            #   POST /comment/:id, POST /request/:id,
+│   │   │                            #   GET /incoming-requests, GET /my-requests,
+│   │   │                            #   PUT /request/:projectId/:requestId
+│   │   ├── project.js               # POST /add-projects, GET /project, PATCH /edit-project/:id
+│   │   ├── profile.js               # GET /profile, PATCH /edit-profile
 │   │   └── authRoutes.js            # Empty (unused — routing lives in controller)
-│   ├── middlewares/                  # Empty (JWT middleware not yet implemented)
+│   ├── middlewares/
+│   │   └── auth.js                  # JWT verification middleware (attaches req.user)
 │   └── node_modules/
 │
 └── sync-board-f/                    # Frontend
     ├── index.html                   # Vite HTML entry
-    ├── vite.config.js               # Vite config (React plugin only)
-    ├── package.json                 # Dependencies: react, react-dom, react-router-dom, lucide-react
+    ├── vite.config.js
+    ├── package.json
     ├── eslint.config.js             # Flat ESLint config
     ├── public/
     │   ├── favicon.svg
     │   └── icons.svg
     └── src/
-        ├── main.jsx                 # React entry, BrowserRouter, dark theme default
-        ├── App.jsx                  # Routes definition
-        ├── App.css                  # Empty (cleared — all styles in index.css)
-        ├── index.css                # All styles (1121 lines, CSS custom properties)
+        ├── main.jsx                 # Entry, BrowserRouter, dark theme default
+        ├── App.jsx                  # Route definitions
+        ├── App.css                  # Empty (all styles in index.css)
+        ├── index.css                # All styles (~3200 lines), CSS custom properties
+        ├── api.js                   # API client functions (8 exported)
+        ├── context/
+        │   └── AuthContext.jsx      # Global auth state (user, token, login, logout, updateUser)
         ├── pages/
-        │   ├── Login.jsx            # Login page (email + password)
-        │   └── Signup.jsx           # Signup page (username + email + password)
+        │   ├── Login.jsx            # Sign in form
+        │   ├── Signup.jsx           # Registration form
+        │   ├── HomeLayout.jsx       # Wrapper with header + <Outlet>, handles navigation
+        │   └── Feed.jsx             # 3-column feed: FeedLeftNav + center + FeedRightPanel
         ├── components/
-        │   ├── Sidebar.jsx          # Navigation sidebar (orphaned)
-        │   ├── Dashboard.jsx        # Project dashboard (orphaned)
-        │   ├── ProjectCard.jsx      # Individual project card (orphaned)
-        │   ├── Toolbar.jsx          # Floating tool palette (orphaned)
-        │   ├── ChatPanel.jsx        # Floating chat panel (orphaned)
+        │   ├── ProjectCard.jsx      # Full project card (feed mode) + compact (trending mode)
+        │   ├── CommentSection.jsx   # Expandable comments with textarea, submit
+        │   ├── RequestModal.jsx     # Collaboration request modal (note input)
+        │   ├── CollaborationRequestsView.jsx  # Incoming + Sent requests tabs
+        │   ├── Toast.jsx            # Toast notification system
+        │   │
+        │   ├── Sidebar.jsx          # Orphaned — not imported
+        │   ├── Dashboard.jsx        # Orphaned — not imported
+        │   ├── Toolbar.jsx          # Orphaned — not imported
+        │   ├── ChatPanel.jsx        # Orphaned — not imported
         │   └── Whiteboard/
-        │       ├── Canvas.jsx        # Whiteboard container (orphaned)
-        │       ├── IdeaCard.jsx      # Draggable idea card (orphaned)
-        │       └── StickyNote.jsx    # Draggable sticky note (orphaned)
+        │       ├── Canvas.jsx       # Orphaned — not imported
+        │       ├── IdeaCard.jsx     # Orphaned — not imported
+        │       └── StickyNote.jsx   # Orphaned — not imported
         ├── hooks/
-        │   ├── useTheme.js          # Dark/light theme toggle
+        │   ├── useTheme.js          # Dark/light theme toggle (buggy — uses undeclared `root`)
         │   └── useDraggable.js      # Pointer-based drag behavior
         └── assets/
             ├── hero.png
@@ -121,8 +142,6 @@ sync-board/                          # Root (monorepo)
 
 ### 4.1 Entry Point (`app.js`)
 
-The server setup follows a linear middleware chain:
-
 ```
 require dotenv → create app → cors() → express.json() → mount routes → connect MongoDB → listen
 ```
@@ -132,7 +151,10 @@ require dotenv → create app → cors() → express.json() → mount routes →
 | `dns.setServers()` | Overrides DNS to Google (8.8.8.8, 8.8.4.4) for Atlas SRV resolution |
 | `cors()` | Allows all origins (permissive, dev-only) |
 | `express.json()` | Parses `application/json` request bodies |
-| `app.use("/", authRoute)` | Mounts auth router at root path |
+| `app.use("/", authRoute)` | Auth routes at root (`/signup`, `/login`) |
+| `app.use("/api", projectRoutes)` | Project CRUD at `/api/add-projects`, `/api/project`, `/api/edit-project/:id` |
+| `app.use("/api/projects", feedRoutes)` | Feed + collaboration routes at `/api/projects/*` |
+| `app.use("/", profileRoutes)` | Profile routes at `/profile`, `/edit-profile` |
 | `mongoose.connect()` | Connects to MongoDB Atlas (no retry logic) |
 | `app.listen()` | Starts HTTP server on configured PORT |
 
@@ -142,41 +164,172 @@ require dotenv → create app → cors() → express.json() → mount routes →
 
 | Aspect | Detail |
 |--------|--------|
-| **Request body** | `{ username: string, email: string, password: string }` |
-| **Validation** | Checks all fields present (after DB lookup — order issue) |
+| **Request body** | `{ username, email, password }` |
+| **Validation** | Checks all fields present (after DB lookup — order bug) |
 | **Duplicate check** | `User.findOne({ email })` — returns "already exists" if found |
-| **Password hashing** | `bcrypt.hash(password, 10)` — 10 salt rounds |
-| **Success response** | `{ message, user }` — **includes password hash** (security issue) |
-| **Error response** | `{ message }` — leaks internal error messages |
+| **Password hashing** | `bcrypt.hash(password, 10)` |
+| **Success** | `{ message, user }` — includes password hash (security issue) |
+| **Error** | `{ message }` — leaks internal error messages |
 
 #### POST /login
 
 | Aspect | Detail |
 |--------|--------|
-| **Request body** | `{ email: string, password: string }` |
+| **Request body** | `{ email, password }` |
 | **Validation** | Checks both fields present |
 | **User lookup** | `User.findOne({ email })` |
 | **Password verify** | `bcrypt.compare(password, user.password)` |
 | **Token** | `jwt.sign({ userId }, JWT_SECRET, { expiresIn: "1d" })` |
-| **Success response** | `{ message, token, user }` — **includes password hash** |
-| **Error response** | `{ message }` |
+| **Success** | `{ message, token, user }` — includes password hash |
+| **Error** | `{ message }` |
 
-### 4.3 Database Schema (`User` model)
+#### GET /api/projects/feed
+
+| Aspect | Detail |
+|--------|--------|
+| **Query params** | `page` (default 1), `limit` (default 12, max 50), `sort` ("recent" / "trending"), `search`, `tag` |
+| **Auth** | No (public) |
+| **Response** | `{ projects[], page, totalPages, total, hasMore }` |
+| **Details** | Uses MongoDB aggregation pipeline: `$match` → `$addFields` (likesCount) → `$sort` → `$skip` → `$limit` → `$lookup` (user + comments.user) → `$project` |
+
+#### POST /api/projects/create
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required |
+| **Body** | `{ title, description, techStack, note }` |
+| **Validates** | Title and description required |
+| **Response** | Created project (populated userId) |
+
+#### PUT /api/projects/like/:id
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required |
+| **Behavior** | Toggles: if user ID in likes array → remove, else → add |
+| **Response** | `{ likes[], likesCount }` |
+
+#### POST /api/projects/comment/:id
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required |
+| **Body** | `{ text }` |
+| **Response** | `{ comments[] }` — populated with user data |
+
+#### POST /api/projects/request/:id
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required |
+| **Body** | `{ note }` |
+| **Behavior** | Pushes `{ user, note, status: "pending", createdAt }` to `project.joinRequest[]` |
+| **Checks** | Duplicate request (400), already a member (400), does **not** check self-request (owner can request own project) |
+| **Response** | `{ message }` |
+
+#### GET /api/projects/incoming-requests
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required |
+| **Query** | Finds all projects where `userId === req.user._id` AND `joinRequest.status === "pending"` |
+| **Populates** | `joinRequest.user` with `username email` |
+| **Response** | `{ incoming: [{ requestId, projectId, projectTitle, projectStatus, user, note, createdAt }] }` |
+
+#### GET /api/projects/my-requests
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required |
+| **Query** | Finds all projects where `joinRequest.user === req.user._id` |
+| **Populates** | `project.userId` (owner) with `username email` |
+| **Response** | `{ outgoing: [{ requestId, projectId, projectTitle, projectStatus, owner, note, status, createdAt }] }` |
+
+#### PUT /api/projects/request/:projectId/:requestId
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required (project owner only — checks `userId === req.user._id`) |
+| **Body** | `{ status: "accepted" | "rejected" }` |
+| **Behavior** | Sets request status; if "accepted", adds requesting user to `project.members` |
+| **Response** | `{ message }` |
+
+#### GET /profile
+
+| Auth | Response |
+|------|----------|
+| Required | `{ user }` — password excluded with `.select("-password")` |
+
+#### PATCH /edit-profile
+
+| Auth | Body | Response |
+|------|------|----------|
+| Required | `{ username, contactNumber, address, linkedInProfile, githubProfile }` | `{ message, user }` |
+
+#### GET /api/project
+
+| Auth | Response |
+|------|----------|
+| Required | `Project.find({ userId: req.user._id }).sort({ timestamp: -1 })` |
+
+#### PATCH /api/edit-project/:id
+
+| Auth | Owner guard | Behavior |
+|------|-------------|----------|
+| Required | `findOneAndUpdate({ _id: params.id, userId: req.user._id })` | Updates title, description, note if provided |
+
+### 4.3 Auth Middleware (`middlewares/auth.js`)
+
+```javascript
+Reads Authorization header → extracts Bearer token → jwt.verify() → User.findById()
+  → attaches full user document to req.user → next()
+```
+
+- Returns 401 if: no token, invalid token, user not found.
+- Attaches the **full Mongoose User document** (including password hash) — callers should avoid exposing `req.user.password` in responses.
+
+### 4.4 Database Schemas
+
+#### User Model
 
 ```javascript
 {
-  username: { type: String, required: true },
-  email:    { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  Timestamp: { type: Date, default: Date.now }
+  username:      { type: String, required: true },
+  email:         { type: String, required: true, unique: true },
+  password:      { type: String, required: true },
+  contactNumber: { type: String, default: null },   // ⚠️ was required:true, fixed
+  address:       { type: String, default: null },   // ⚠️ was required:true, fixed
+  linkedInProfile: { type: String, default: null }, // ⚠️ was required:true, fixed
+  githubProfile: { type: String, default: null },   // ⚠️ was required:true, fixed
+  Timestamp:     { type: Date, default: Date.now }
 }
 ```
 
-- Mongoose creates a unique sparse index on `email`.
-- No `timestamps: true` option — uses a hand-rolled `Timestamp` field.
-- No password exclusion in `toJSON` — hashed password is included in all serialized output.
+#### Project Model
 
-### 4.4 Dependencies
+```javascript
+{
+  title:       { type: String, required: true },
+  description: { type: String, required: true },
+  note:        { type: String },
+  userId:      { type: ObjectId, ref: "User", required: true },  // owner
+  techStack:   { type: [String], default: [] },
+  likes:       [{ type: ObjectId, ref: "User" }],
+  comments:    [{ user: { ObjectId, ref: "User" }, text: String, createdAt: Date }],
+  members:     [{ type: ObjectId, ref: "User" }],                  // accepted collaborators
+  joinRequest: [{
+    user: { ObjectId, ref: "User" },
+    note: String,
+    status: { enum: ["pending", "accepted", "rejected"], default: "pending" },
+    createdAt: { type: Date, default: Date.now }
+  }],
+  status:      { enum: ["open", "in_progress", "closed"], default: "open" },
+  visibility:  { enum: ["public", "private"], default: "public" },
+  timestamp:   { type: Date, default: Date.now }
+}
+```
+
+### 4.5 Dependencies
 
 | Package | Purpose |
 |---------|---------|
@@ -190,27 +343,26 @@ require dotenv → create app → cors() → express.json() → mount routes →
 | `cookie-parser` | **Installed but unused** |
 | `nodemon` (dev) | Auto-restart during development |
 
-### 4.5 Environment Variables
+### 4.6 Environment Variables
 
 | Variable | Required | Used In | Purpose |
 |----------|----------|---------|---------|
-| `PORT` | No* | `app.js` | HTTP server port (defaults to Express default ~3000) |
+| `PORT` | No\* | `app.js` | HTTP server port (default 5000) |
 | `MONGO_URL` | Yes | `app.js` | MongoDB Atlas connection string |
-| `JWT_SECRET` | Yes | `authController.js` | HMAC secret for JWT signing |
+| `JWT_SECRET` | Yes | `authController.js`, `middlewares/auth.js` | HMAC secret for JWT signing |
 
-### 4.6 Known Backend Issues
+### 4.7 Known Backend Issues
 
 | Issue | Severity |
 |-------|----------|
 | All responses return HTTP 200 (no 400/401/404/500) | High |
 | Password hash exposed in API responses | Critical |
 | Error messages leak internal details | High |
-| No auth middleware for protected routes | High |
-| Validation order bug (DB check before field check) | Medium |
-| `routes/authRoutes.js` is empty / unused | Low |
-| `middlewares/` is empty (no JWT verification) | High |
-| `cookie-parser` installed but unused | Low |
+| Validation order bug (DB check before field check in signup) | Medium |
 | No input sanitization or rate limiting | Medium |
+| No owner-guard in `POST /request/:id` (user can request own project) | Low |
+| `cookie-parser` installed but unused | Low |
+| `routes/authRoutes.js` is empty / unused | Low |
 
 ---
 
@@ -232,77 +384,125 @@ document.documentElement.setAttribute('data-theme', 'dark')
 |------|-----------|---------|
 | `/` | `Login` | Sign in form |
 | `/signup` | `Signup` | Registration form |
-| `/dashboard` | `Home` (inline) | Placeholder post-login view |
-| `*` | `Navigate to="/"` | Catch-all redirect |
+| `/feed` | `HomeLayout` → `Outlet` → `Feed` | Main 3-column feed page |
+| `/create` | `HomeLayout` → `Outlet` → `CreateProject` | Create a new project |
+| `/:id` | `HomeLayout` → `Outlet` → `Workspace` | Project detail / workspace |
+| `*` | `Navigate to="/feed"` | Catch-all redirect (authenticated) or `/` |
 
-- Programmatic navigation via `useNavigate` (login → dashboard, signup → login).
-- `<Link>` components for auth page switching.
+### 5.3 Auth Context (`AuthContext.jsx`)
 
-### 5.3 Auth Flow
-
-```
-Login                      Signup
-  │                          │
-  ▼                          ▼
-fetch POST /login          fetch POST /signup
-  │                          │
-  ▼                          ▼
-Check for token             Check for user
-  │                          │
-  ├─ Yes: localStorage      ├─ Yes: navigate('/')
-  │   store token+user      └─ No: show error
-  │   navigate('/dashboard')
-  └─ No: show error
-```
-
-- Both pages use `FormData` to read values directly from the DOM on submit (handles autofill).
-- Token and user object stored in `localStorage`.
-- No auth context — token is written but never read by any component.
+- Provides `{ user, token, loading, login, logout, updateUser }` globally.
+- On mount: reads `token` and `user` from `localStorage`, verifies token with backend.
+- `login(token, user)`: stores to localStorage + sets state.
+- `logout()`: clears localStorage + nullifies state + navigates to `/`.
+- **No ProtectedRoute wrapper** — routes check `token` internally and redirect if missing.
 
 ### 5.4 Component Tree
 
 ```
 <BrowserRouter>
   <Routes>
-    <Login />           → email + password form, password toggle
-    <Signup />           → username + email + password form, password toggle
-    <Home />             → centered placeholder text
-    <Navigate />         → catch-all redirect to /
+    <Login />
+    <Signup />
+    <HomeLayout>                          // Header + <Outlet>
+      <Route index element={<Feed />} />  // 3-column layout
+      <Route path="create" />
+      <Route path=":id" />
+    </HomeLayout>
+    <Navigate to="/feed" />
   </Routes>
 </BrowserRouter>
+
+--- Feed (3-column layout) ---
+<Feed>
+  <FeedLeftNav>              // Glassmorphism mini-sidebar
+    Home | Explore | Notifications | Messages | Collaboration
+    Profile avatar (bottom)
+  </FeedLeftNav>
+
+  <div class="feed-center">
+    <CollaborationRequestsView>  // When feedView === "collaboration"
+      Tabs: Incoming | Sent Requests
+      Cards with accept/reject (incoming) or status pills (outgoing)
+    </CollaborationRequestsView>
+
+    <Feed Header>              // Title, search bar, New Post button
+    <Filter Tabs>              // All | Trending | Recent | AI | Web Dev | Open Source
+    <Trending Section>         // Horizontal scroll of compact ProjectCards
+    <Main Cards>               // Full ProjectCards (infinite scroll w/ IntersectionObserver)
+      <ProjectCard>
+        <feed-card-actions>    // Like (toggle), View count
+        <ProjectCard Actions>  // Members avatars, View Project, Collaborate (handshake)
+        <CommentSection>       // Expandable: "N comments" trigger → list + textarea
+      </ProjectCard>
+  </div>
+
+  <FeedRightPanel>             // Widget cards
+    Trending Tags              // Clickable tag pills with counts
+    Top Contributors           // Avatar + name + Follow button
+  </FeedRightPanel>
+</Feed>
 ```
 
-### 5.5 Orphaned (Unwired) Components
+### 5.5 HomeLayout (`HomeLayout.jsx`)
 
-The following components exist in the filesystem but are **not imported or rendered** by any route:
+- Renders a sticky header with logo, navigation links (Home, Create, Workspace), user avatar dropdown.
+- Uses `<Outlet />` for nested routing.
+- `handleNavigate(view, project?)` → uses `useNavigate()` to route to `/feed`, `/create`, or `/:id` (workspace).
+- Unused `openProject` variable exists (lint issue).
+
+### 5.6 Key Components
+
+#### ProjectCard
+- **Two modes**: `compact` (horizontal trending card) and full `feed` (vertical card with all details).
+- **Feed mode layout**: avatar + user info + status badge → title → description → tech stack pills → optional gradient thumbnail → action bar (like, views) → right actions (members, View Project, Collaborate) → CommentSection (full-width below).
+- **State**: local `imgErr` for fallback avatar.
+- **Engagement**: like toggle via `onLike(id)`, save bookmark via `onSave(id)`, comment via `onComment(id, text)`, collaborate via `onRequest(project)`.
+
+#### CommentSection
+- Trigger button: "N comments" — toggles open/closed.
+- When open: scrollable comment list + auto-resizing `<textarea>` + submit button.
+- Cmd+Enter / Ctrl+Enter submits.
+- Empty state: "No comments yet. Be the first!"
+
+#### CollaborationRequestsView
+- Two tabs: **Incoming** (requests for my projects) and **Sent Requests** (my requests to others).
+- Fetches from both `/incoming-requests` and `/my-requests` in parallel via `Promise.allSettled`.
+- Incoming: requester avatar + name, project title, note, Accept (green) / Reject (red) buttons; on accept → user added to project members.
+- Sent: project title + owner, note, status pill (Pending=yellow, Accepted=green, Rejected=red).
+
+#### RequestModal
+- Modal overlay with backdrop blur.
+- Textarea for note, "Send Request" submit button.
+- Loading state with spinner.
+
+### 5.7 Orphaned (Unwired) Components
+
+These exist in the filesystem but are **not imported or rendered** by any route:
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| `Sidebar` | `components/Sidebar.jsx` | Navigation (Dashboard, Projects, Team, etc.) + theme toggle + user profile |
-| `Dashboard` | `components/Dashboard.jsx` | Projects grid with 6 hardcoded project cards |
-| `ProjectCard` | `components/ProjectCard.jsx` | Individual project stats + progress bar + team avatars |
-| `Toolbar` | `components/Toolbar.jsx` | Floating tool palette (pen, shapes, sticky notes, share) |
+| `Sidebar` | `components/Sidebar.jsx` | Navigation (Dashboard, Projects, Team, etc.) + theme toggle |
+| `Dashboard` | `components/Dashboard.jsx` | Projects grid with hardcoded cards |
+| `Toolbar` | `components/Toolbar.jsx` | Floating tool palette (pen, shapes, sticky notes) |
 | `ChatPanel` | `components/ChatPanel.jsx` | Floating chat with messages + input |
-| `Canvas` | `components/Whiteboard/Canvas.jsx` | Whiteboard area with draggable elements + zoom controls |
+| `Canvas` | `components/Whiteboard/Canvas.jsx` | Whiteboard area with draggable elements + zoom |
 | `StickyNote` | `components/Whiteboard/StickyNote.jsx` | Draggable sticky note with editable content |
 | `IdeaCard` | `components/Whiteboard/IdeaCard.jsx` | Draggable idea card with badge + progress |
 
-These were part of an earlier/planned main workspace layout (sidebar + toolbar + canvas + chat) that has not yet been wired into the routing.
+### 5.8 State Management
 
-### 5.6 State Management
+| Component / Hook | State |
+|------------------|-------|
+| `AuthContext` | `user`, `token`, `loading` |
+| `Feed` | `projects[]`, `trendingProjects[]`, `page`, `hasMore`, `likedIds`, `savedIds`, `activeFilter`, `searchQuery`, `feedView` |
+| `CommentSection` | `text`, `open` |
+| `RequestModal` | `note` (local) |
+| `CollaborationRequestsView` | `incoming[]`, `outgoing[]`, `activeTab`, `loading`, `actionLoading` |
+| `useTheme` | `theme` ("dark"/"light") persisted to localStorage |
+| `useDraggable` | `position` ({ top, left }) |
 
-All state is **local** — no Redux, no Context, no Zustand.
-
-| Component | State |
-|-----------|-------|
-| `Login` | `form` (email, password), `showPassword`, `error`, `loading` |
-| `Signup` | `form` (username, email, password), `showPassword`, `error`, `loading` |
-| `StickyNote` | `text` (editable content) |
-| `ChatPanel` | `isOpen`, `inputValue`, `messages` (hardcoded seed) |
-| `useTheme` | `theme` ("dark" / "light") persisted to localStorage |
-| `useDraggable` | `position` ({ top, left }), refs for drag tracking |
-
-### 5.7 Custom Hooks
+### 5.9 Custom Hooks
 
 #### `useTheme`
 - Reads initial value from `localStorage` (defaults to `"dark"`).
@@ -314,11 +514,11 @@ All state is **local** — no Redux, no Context, no Zustand.
 - Uses Pointer Events API (`pointerdown`, `pointermove`, `pointerup`).
 - Uses `setPointerCapture` / `releasePointerCapture` for reliable tracking.
 - Prevents drag on textarea/input elements.
-- Returns `{ position, dragHandlers }` for spread onto elements.
+- Returns `{ position, dragHandlers }`.
 
-### 5.8 Styling Architecture
+### 5.10 Styling Architecture
 
-All styles live in a single file: **`src/index.css`** (1121 lines).
+All styles live in a single file: **`src/index.css`** (~3200 lines).
 
 #### Theming via CSS Custom Properties
 
@@ -327,14 +527,12 @@ All styles live in a single file: **`src/index.css`** (1121 lines).
   --bg-dark: #ffffff;
   --accent-color: #4f46e5;
   --text-main: #0f172a;
-  /* ... */
 }
 
 :root[data-theme='dark'] {
   --bg-dark: #121212;
   --accent-color: #6366f1;
   --text-main: #f3f4f6;
-  /* ... */
 }
 ```
 
@@ -349,20 +547,19 @@ All styles live in a single file: **`src/index.css`** (1121 lines).
 | `--border-color` | `#e5e7eb` | `#2e2e2e` | Borders / dividers |
 | `--card-bg` | `#ffffff` | `#222222` | Card backgrounds |
 
-#### Layout Classes
+#### Key Layout Classes
 
 | Class | Layout | Purpose |
 |-------|--------|---------|
-| `.app-container` | flex row | Sidebar + main content split |
-| `.sidebar` | 260px column | Navigation |
-| `.main-content` | flex-1 | Right-side content area |
-| `.auth-page` | centered flex | Full-Viewport auth layout |
-| `.auth-card` | max 420px | Auth form card |
-| `.whiteboard-area` | flex-1 | Canvas with grid background |
-| `.floating-toolbar` | absolute, centered | Tool palette |
-| `.floating-chat-panel` | absolute, right | Chat panel |
-| `.dashboard-container` | scrollable | Dashboard page |
-| `.projects-grid` | CSS Grid | Auto-fill project cards |
+| `.feed-3col-layout` | flex row (left nav 64px + center flex-1 + right panel 280px) | Main feed layout |
+| `.feed-left-nav` | fixed 64px column | Mini sidebar navigation |
+| `.feed-center` | flex-1, scrollable | Center feed content |
+| `.feed-right-panel` | 280px column | Trending tags + contributors |
+| `.feed-card` | glassmorphism card (border, backdrop-blur) | Project card container |
+| `.feed-card-comments` | full-width below action bar | Comment section block |
+| `.collab-card` | glassmorphism card | Request card container |
+| `.auth-page` | centered flex | Full-viewport auth layout |
+| `.workspace-layout` | flex row | Sidebar + main content split |
 
 #### Animations
 
@@ -371,7 +568,8 @@ All styles live in a single file: **`src/index.css`** (1121 lines).
 | `slideDown` | `.floating-toolbar` | Elastic slide from above |
 | `slideLeft` | `.floating-chat-panel` | Slide from right |
 | `slideUp` | `.chat-message` | Fade up on appear |
-| `fadeIn` | `.projects-grid`, `.auth-card` | Fade in + translate up |
+| `fadeIn` | `.projects-grid`, `.auth-card`, `.feed-card-wrapper` | Fade in + translate up |
+| `spin` | `.feed-spinner`, `.feed-spinner-sm` | Loading spinner |
 
 ---
 
@@ -381,28 +579,104 @@ All styles live in a single file: **`src/index.css`** (1121 lines).
 
 ```
 User fills form → clicks "Create account"
-  → handleSubmit reads form via FormData
+  → handleSubmit via FormData
   → Validates: all fields present, password >= 6 chars
-  → fetch POST /signup  { username, email, password }
-  → Backend validates, hashes password, creates user in MongoDB
+  → fetch POST /signup { username, email, password }
+  → Backend validates, hashes password, creates user
   → Response: { message, user }
-    ├─ Success (user exists) → navigate('/')
-    └─ Error (message)       → show error banner
+    ├─ Success → navigate('/')
+    └─ Error   → show error banner
 ```
 
 ### 6.2 Login Flow
 
 ```
 User fills form → clicks "Sign in"
-  → handleSubmit reads form via FormData
+  → handleSubmit via FormData
   → Validates: both fields present
-  → fetch POST /login  { email, password }
+  → fetch POST /login { email, password }
   → Backend looks up user, compares password, generates JWT
   → Response: { message, token, user }
-    ├─ Success (token present) → localStorage.setItem('token', token)
-    │                            localStorage.setItem('user', JSON.stringify(user))
-    │                            navigate('/dashboard')
-    └─ Error (message)         → show error banner
+    ├─ Success → AuthContext.login(token, user)
+    │            navigate('/feed')
+    └─ Error   → show error banner
+```
+
+### 6.3 Feed Flow
+
+```
+Feed mounts
+  → fetch GET /api/projects/feed?page=1&sort=recent
+  → Set projects[], set likedIds/savedIds
+  → Render ProjectCards with fade-in animation
+
+User scrolls
+  → IntersectionObserver triggers on sentinel element
+  → fetch GET /api/projects/feed?page=N&sort=...
+  → Append new projects to list (dedup by _id)
+
+User types search
+  → 350ms debounce
+  → fetch GET /api/projects/feed?search=query
+  → Replace projects list
+
+User clicks filter tab
+  → setActiveFilter(key)
+  → fetch GET /api/projects/feed?tag=...&sort=...
+  → Replace projects list
+```
+
+### 6.4 Like / Save / Comment Flow
+
+```
+Like:
+  User clicks heart → toggleLike(token, projectId)
+    → Optimistic: toggle likedIds set, update likes array in projects[]
+    → Backend: toggle user ID in project.likes
+    → On error: revert optimistic update
+
+Save:
+  User clicks bookmark → toggle project ID in savedIds Set
+    → Persist to localStorage("savedProjects")
+    → No backend call (client-side only)
+
+Comment:
+  User clicks "N comments" → expand CommentSection
+  User types + submits → addComment(token, projectId, text)
+    → Backend pushes { user, text } to project.comments
+    → Response: updated comments array → replace in projects[]
+  ```
+
+### 6.5 Collaboration Request Flow
+
+```
+Send request:
+  User clicks handshake on ProjectCard
+    → setReqModal({ open: true, project })
+    → RequestModal appears
+    → User types note → onSubmit(note)
+    → POST /api/projects/request/:id { note }
+    → toast "Collaboration request sent!"
+
+Owner views requests:
+  Owner clicks "Collaboration" in left sidebar
+    → setFeedView("collaboration")
+    → <CollaborationRequestsView> mounts
+    → Promise.allSettled([
+        GET /api/projects/incoming-requests,
+        GET /api/projects/my-requests
+      ])
+    → Shows Incoming tab by default
+
+Owner acts on request:
+  Owner clicks Accept → PUT /api/projects/request/:projectId/:requestId { status: "accepted" }
+    → User added to project.members
+    → Card removed from incoming list
+    → toast "Collaborator accepted!"
+
+  Owner clicks Reject → PUT /api/projects/request/:projectId/:requestId { status: "rejected" }
+    → Request status set to rejected
+    → Card removed from incoming list
 ```
 
 ---
@@ -412,14 +686,13 @@ User fills form → clicks "Sign in"
 ### Critical
 
 - **Password hash exposed in API responses** — both signup and login return the full user document including `password` field.
-- **No JWT middleware** — `middlewares/` is empty; there is no way to protect routes.
 - **All responses return HTTP 200** — validation errors, auth failures, and server errors all return 200 instead of proper status codes (400, 401, 404, 500).
 
 ### High
 
 - **Error messages leak internals** — `catch` blocks return `err.message` directly to client (may expose MongoDB errors, etc.).
 - **CORS wide open** — `cors()` with no options allows all origins.
-- **No auth context or protected routes** — `/dashboard` is accessible without authentication; no route guards exist.
+- **No route guards** — `/feed` and `/create` are accessible without authentication (components check `token` internally but don't redirect at the router level).
 - **`useTheme` bug** — references undeclared variable `root`, will cause `ReferenceError` at runtime.
 
 ### Medium
@@ -435,6 +708,8 @@ User fills form → clicks "Sign in"
 - `cookie-parser` installed but never used.
 - Dead import `const { Timestamp } = require("mongodb")` in `User.js`.
 - Unconventional `Timestamp` field (capital T) instead of Mongoose `timestamps: true`.
+- `openProject` unused variable in `HomeLayout.jsx`.
+- No owner-guard in `POST /api/projects/request/:id` (user can send request to own project).
 - Typos: "or port" → "on port", "exits" → "exists", "regiestered" → "registered".
 
 ---
@@ -443,24 +718,24 @@ User fills form → clicks "Sign in"
 
 ### Short-term
 
-1. **Wire up workspace components** — integrate Sidebar, Toolbar, Canvas, ChatPanel into a `/workspace` route.
-2. **Create auth context** — add `AuthContext` to share user state across components, add `ProtectedRoute` wrapper.
+1. **Strip password from API responses** — add Mongoose `toJSON` transform on User model.
+2. **Use proper HTTP status codes** — 400, 401, 409, 500 across all endpoints.
 3. **Fix `useTheme` bug** — declare `const root = document.documentElement`.
-4. **Strip password from API responses** — add Mongoose `toJSON` transform.
-5. **Use proper HTTP status codes** — 400, 401, 409, 500.
+4. **Input validation** — email regex, password strength (min length, complexity), input trimming.
+5. **Move API base URL to environment variable** — `VITE_API_URL` in `.env`.
 
 ### Medium-term
 
-6. **Add JWT verification middleware** — protect future routes.
-7. **Input validation** — email regex, password strength, input trimming.
-8. **Move API base URL to environment variable** — `VITE_API_URL` in `.env`.
-9. **Add form validation feedback** — inline field-level errors.
-10. **Rate limiting** on auth endpoints (`express-rate-limit`).
+6. **Add ProtectedRoute wrapper** — redirect unauthenticated users at router level, not component level.
+7. **Rate limiting** on auth endpoints (`express-rate-limit`).
+8. **Add proper error classes** — consistent error response format `{ error: string, code: string }`.
+9. **Add owner-guard** on `POST /api/projects/request/:id` — prevent self-requests.
+10. **Collaboration notifications** — notify project owner when a request is received (in-app or email).
 
 ### Long-term
 
 11. **Real-time collaboration** — WebSocket (Socket.IO) for multi-user whiteboard editing.
 12. **Persist whiteboard data** — save/load board elements from MongoDB.
-13. **File/image upload** — attach images to whiteboard or chat.
-14. **Team management** — invite members, permissions.
-15. **Responsive design** — mobile support for the workspace view.
+13. **File/image upload** — attach images to projects and comments.
+14. **Team management** — invite members, permissions, roles.
+15. **Responsive design** — mobile support for the feed and workspace views.
