@@ -5,6 +5,7 @@ export default function CommentSection({ comments, onAddComment, loading }) {
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   const listRef = useRef(null);
+  const textareaRef = useRef(null);
 
   useEffect(() => {
     if (open && listRef.current) {
@@ -12,41 +13,58 @@ export default function CommentSection({ comments, onAddComment, loading }) {
     }
   }, [comments, open]);
 
+  const autoResize = () => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!text.trim()) return;
     onAddComment(text.trim());
     setText("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      handleSubmit(e);
+    }
   };
 
   return (
-    <div>
+    <div className="feed-card-comments">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+        className="feed-card-comments-trigger"
       >
-        <MessageSquare size={14} />
+        <MessageSquare size={16} />
         {comments?.length || 0} comments
       </button>
 
       {open && (
-        <div className="mt-3 border-t border-white/10 pt-3">
+        <div className="feed-card-comments-body">
           <div
             ref={listRef}
-            className="max-h-48 overflow-y-auto space-y-2.5 mb-3 scrollbar-thin"
+            className="feed-card-comments-list"
           >
             {comments && comments.length > 0 ? (
               comments.map((c, i) => (
-                <div key={c._id || i} className="flex gap-2.5">
-                  <div className="w-6 h-6 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-[10px] font-medium text-indigo-300 shrink-0">
+                <div key={c._id || i} className="feed-card-comment-item">
+                  <div className="feed-card-comment-avatar">
                     {(c.user?.username || "U")[0].toUpperCase()}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-white">
+                  <div className="feed-card-comment-content">
+                    <div className="feed-card-comment-header">
+                      <span className="feed-card-comment-author">
                         {c.user?.username || "Unknown"}
                       </span>
-                      <span className="text-[10px] text-gray-500">
+                      <span className="feed-card-comment-date">
                         {new Date(c.createdAt).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -55,31 +73,36 @@ export default function CommentSection({ comments, onAddComment, loading }) {
                         })}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-300 mt-0.5 break-words">{c.text}</p>
+                    <p className="feed-card-comment-text">{c.text}</p>
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-xs text-gray-500 text-center py-2">
+              <p className="feed-card-comments-empty">
                 No comments yet. Be the first!
               </p>
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <input
-              type="text"
+          <form onSubmit={handleSubmit} className="feed-card-comments-form">
+            <textarea
+              ref={textareaRef}
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                autoResize();
+              }}
+              onKeyDown={handleKeyDown}
               placeholder="Write a comment..."
-              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all"
+              rows={1}
+              className="feed-card-comments-input"
             />
             <button
               type="submit"
               disabled={loading || !text.trim()}
-              className="p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800/50 disabled:cursor-not-allowed text-white transition-all duration-200"
+              className="feed-card-comments-submit"
             >
-              <Send size={14} />
+              <Send size={16} />
             </button>
           </form>
         </div>

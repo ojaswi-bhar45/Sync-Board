@@ -48,3 +48,23 @@ export function sendJoinRequest(token, projectId, note) {
     body: JSON.stringify({ note }),
   }).then(handleResponse);
 }
+
+export function getIncomingRequests(token) {
+  return fetch(`${API}/api/projects/incoming-requests`, {
+    headers: headers(token),
+  }).then(handleResponse);
+}
+
+export function getMyRequests(token) {
+  return fetch(`${API}/api/projects/my-requests`, {
+    headers: headers(token),
+  }).then(handleResponse);
+}
+
+export function updateJoinRequest(token, projectId, requestId, status) {
+  return fetch(`${API}/api/projects/request/${projectId}/${requestId}`, {
+    method: "PUT",
+    headers: headers(token),
+    body: JSON.stringify({ status }),
+  }).then(handleResponse);
+}

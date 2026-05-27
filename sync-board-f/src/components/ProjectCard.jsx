@@ -158,12 +158,6 @@ export default function ProjectCard({
               <span>{formatCount(likeCount)}</span>
             </button>
 
-            <CommentSection
-              comments={project.comments}
-              onAddComment={(text) => onComment(project._id, text)}
-              loading={commentLoading}
-            />
-
             <div className="feed-card-action-btn feed-card-action-btn-static">
               <Eye size={15} />
               <span>{formatCount(viewCount)}</span>
@@ -199,6 +193,12 @@ export default function ProjectCard({
             </button>
           </div>
         </div>
+
+        <CommentSection
+          comments={project.comments}
+          onAddComment={(text) => onComment(project._id, text)}
+          loading={commentLoading}
+        />
       </div>
     </div>
   );

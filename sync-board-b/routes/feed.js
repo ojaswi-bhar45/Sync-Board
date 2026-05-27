@@ -217,4 +217,101 @@ router.post("/request/:id", auth, async (req, res) => {
   }
 });
 
+// ─── Incoming Requests (for project owner) ───
+router.get("/incoming-requests", auth, async (req, res) => {
+  try {
+    const projects = await Project.find({
+      userId: req.user._id,
+      "joinRequest.status": "pending",
+    }).populate("joinRequest.user", "username email");
+
+    const incoming = [];
+    for (const project of projects) {
+      for (const r of project.joinRequest) {
+        if (r.status === "pending") {
+          incoming.push({
+            requestId: r._id,
+            projectId: project._id,
+            projectTitle: project.title,
+            projectStatus: project.status,
+            user: r.user,
+            note: r.note,
+            status: r.status,
+            createdAt: r.createdAt,
+          });
+        }
+      }
+    }
+
+    res.json({ incoming });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ─── Outgoing Requests (user's own requests) ───
+router.get("/my-requests", auth, async (req, res) => {
+  try {
+    const projects = await Project.find({
+      "joinRequest.user": req.user._id,
+    }).populate("userId", "username email");
+
+    const outgoing = [];
+    for (const project of projects) {
+      const myRequest = project.joinRequest.find(
+        (r) => r.user.toString() === req.user._id.toString(),
+      );
+      if (myRequest) {
+        outgoing.push({
+          requestId: myRequest._id,
+          projectId: project._id,
+          projectTitle: project.title,
+          projectStatus: project.status,
+          owner: project.userId,
+          note: myRequest.note,
+          status: myRequest.status,
+          createdAt: myRequest.createdAt,
+        });
+      }
+    }
+
+    res.json({ outgoing });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ─── Accept / Reject a join request ───
+router.put("/request/:projectId/:requestId", auth, async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!["accepted", "rejected"].includes(status))
+      return res.status(400).json({ message: "Invalid status" });
+
+    const project = await Project.findOne({
+      _id: req.params.projectId,
+      userId: req.user._id,
+    });
+    if (!project)
+      return res.status(404).json({ message: "Project not found" });
+
+    const request = project.joinRequest.id(req.params.requestId);
+    if (!request)
+      return res.status(404).json({ message: "Request not found" });
+
+    request.status = status;
+
+    if (status === "accepted") {
+      if (!project.members.includes(request.user)) {
+        project.members.push(request.user);
+      }
+    }
+
+    await project.save();
+    res.json({ message: `Request ${status}` });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;

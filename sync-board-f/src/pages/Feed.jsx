@@ -10,9 +10,11 @@ import {
   addComment,
   sendJoinRequest,
 } from "../api";
+import CollaborationRequestsView from "../components/CollaborationRequestsView";
+import { updateJoinRequest } from "../api";
 import {
   Loader2, FolderOpen, Search, Plus, Sparkles,
-  SlidersHorizontal, Home, Compass, Bell, MessageSquare,
+  SlidersHorizontal, Home, Compass, Bell, MessageSquare, Handshake,
   Hash, Users, Flame, Eye,
 } from "lucide-react";
 
@@ -57,13 +59,22 @@ function filterParams(activeFilter) {
   return params;
 }
 
-function FeedLeftNav({ onNavigate, user, activeView }) {
+function FeedLeftNav({ onNavigate, user, activeView, onFeedNav }) {
   const links = [
     { icon: Home, view: "feed", label: "Home" },
     { icon: Compass, view: "explore", label: "Explore" },
     { icon: Bell, view: "notifications", label: "Notifications" },
     { icon: MessageSquare, view: "messages", label: "Messages" },
+    { icon: Handshake, view: "collaboration", label: "Collaboration" },
   ];
+
+  const handleClick = (view) => {
+    if (view === "collaboration") {
+      onFeedNav?.(view);
+    } else {
+      onNavigate(view);
+    }
+  };
 
   return (
     <nav className="feed-left-nav">
@@ -72,7 +83,7 @@ function FeedLeftNav({ onNavigate, user, activeView }) {
           {links.map(({ icon: Icon, view, label }) => (
             <button
               key={view}
-              onClick={() => onNavigate(view)}
+              onClick={() => handleClick(view)}
               className={`feed-left-nav-btn ${activeView === view ? "active" : ""}`}
               title={label}
             >
@@ -166,6 +177,7 @@ function FeedRightPanel() {
 
 export default function Feed({ onNavigate }) {
   const { token, user } = useAuth();
+  const [feedView, setFeedView] = useState("feed");
   const [projects, setProjects] = useState([]);
   const [trendingProjects, setTrendingProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -404,154 +416,166 @@ export default function Feed({ onNavigate }) {
     onNavigate("workspace", project);
   };
 
+  const handleFeedNav = (view) => {
+    setFeedView(view);
+  };
+
   const showTrending = trendingProjects.length > 0 && activeFilter === "all" && !searchQuery;
 
   return (
     <>
       <div className="feed-3col-layout">
         {/* Left Mini Sidebar */}
-        <FeedLeftNav onNavigate={onNavigate} user={user} activeView="feed" />
+        <FeedLeftNav onNavigate={onNavigate} user={user} activeView={feedView} onFeedNav={handleFeedNav} />
 
-        {/* Center Feed */}
+        {/* Center Content */}
         <div className="feed-center">
-          <div className="feed-center-scroll">
-            {/* ─── Header ─── */}
-            <div className="feed-header">
-              <div className="feed-header-left">
-                <h1 className="feed-title">
-                  Project Feed
-                  <Sparkles size={22} className="feed-title-icon" />
-                </h1>
-                <p className="feed-subtitle">Discover and collaborate on amazing projects</p>
-              </div>
-              <div className="feed-header-right">
-                <div className="feed-search-wrapper">
-                  <div className="feed-search">
-                    <Search size={16} className="feed-search-icon" />
-                    <input
-                      type="text"
-                      placeholder="Search projects..."
-                      value={searchInput}
-                      onChange={handleSearchChange}
-                    />
-                  </div>
+          {feedView === "collaboration" ? (
+            <CollaborationRequestsView
+              token={token}
+              onUpdateJoinRequest={updateJoinRequest}
+              onNavigate={onNavigate}
+            />
+          ) : (
+            <div className="feed-center-scroll">
+              {/* ─── Header ─── */}
+              <div className="feed-header">
+                <div className="feed-header-left">
+                  <h1 className="feed-title">
+                    Project Feed
+                    <Sparkles size={22} className="feed-title-icon" />
+                  </h1>
+                  <p className="feed-subtitle">Discover and collaborate on amazing projects</p>
                 </div>
-                <button
-                  onClick={() => onNavigate("create")}
-                  className="new-post-btn"
-                >
-                  <Plus size={18} />
-                  <span className="new-post-btn-text">New Post</span>
-                </button>
-                <button className="feed-filter-btn" title="Filters">
-                  <SlidersHorizontal size={18} />
-                </button>
-              </div>
-            </div>
-
-            {/* ─── Filter Tabs ─── */}
-            <div className="feed-tabs">
-              {FILTERS.map((f) => (
-                <button
-                  key={f.key}
-                  onClick={() => setActiveFilter(f.key)}
-                  className={`feed-tab ${activeFilter === f.key ? "active" : ""}`}
-                >
-                  {f.label}
-                  {activeFilter === f.key && <div className="feed-tab-glow" />}
-                </button>
-              ))}
-            </div>
-
-            {/* ─── Trending Section ─── */}
-            {showTrending && (
-              <div className="feed-trending-section">
-                <div className="feed-trending-header">
-                  <Flame size={16} className="text-orange-400" />
-                  <span className="feed-trending-title">Trending</span>
-                  <span className="feed-trending-subtitle">Popular projects right now</span>
-                </div>
-                <div className="trending-scroll">
-                  {trendingProjects.map((p) => (
-                    <ProjectCard
-                      key={p._id}
-                      project={p}
-                      compact
-                      isLiked={likedIds.has(p._id)}
-                      onLike={handleLike}
-                      onRequest={(project) => setReqModal({ open: true, project })}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* ─── Main Cards ─── */}
-            {loading ? (
-              <div className="feed-loading">
-                <Loader2 size={36} className="feed-spinner" />
-                <p className="feed-loading-text">Loading projects...</p>
-              </div>
-            ) : projects.length === 0 ? (
-              <div className="feed-empty">
-                <div className="feed-empty-icon">
-                  <FolderOpen size={32} className="text-indigo-400" />
-                </div>
-                <h3 className="feed-empty-title">No projects found</h3>
-                <p className="feed-empty-desc">
-                  {searchQuery
-                    ? "Try adjusting your search or filters"
-                    : "Be the first to create a project and find collaborators"}
-                </p>
-                <button
-                  onClick={() => onNavigate("create")}
-                  className="gradient-btn inline-flex items-center gap-2"
-                >
-                  <Plus size={16} />
-                  Create your first project
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="feed-cards">
-                  {projects.map((project, index) => (
-                    <div
-                      key={project._id}
-                      className="feed-card-wrapper"
-                      style={{ animationDelay: `${Math.min(index % PAGE_LIMIT, 6) * 40}ms` }}
-                    >
-                      <ProjectCard
-                        project={project}
-                        isLiked={likedIds.has(project._id)}
-                        isSaved={savedIds.has(project._id)}
-                        onLike={handleLike}
-                        onSave={handleSave}
-                        onComment={handleComment}
-                        onRequest={(p) => setReqModal({ open: true, project: p })}
-                        onViewProject={handleViewProject}
-                        likeLoading={likeLoading === project._id}
-                        commentLoading={commentLoading === project._id}
-                        showThumbnail={index % 3 === 1}
+                <div className="feed-header-right">
+                  <div className="feed-search-wrapper">
+                    <div className="feed-search">
+                      <Search size={16} className="feed-search-icon" />
+                      <input
+                        type="text"
+                        placeholder="Search projects..."
+                        value={searchInput}
+                        onChange={handleSearchChange}
                       />
                     </div>
-                  ))}
+                  </div>
+                  <button
+                    onClick={() => onNavigate("create")}
+                    className="new-post-btn"
+                  >
+                    <Plus size={18} />
+                    <span className="new-post-btn-text">New Post</span>
+                  </button>
+                  <button className="feed-filter-btn" title="Filters">
+                    <SlidersHorizontal size={18} />
+                  </button>
                 </div>
+              </div>
 
-                <div ref={sentinelRef} className="feed-sentinel">
-                  {loadingMore ? (
-                    <div className="feed-sentinel-inner">
-                      <Loader2 size={20} className="feed-spinner-sm" />
-                      <span>Loading more projects...</span>
-                    </div>
-                  ) : hasMore ? (
-                    <span className="feed-sentinel-text">Scroll for more</span>
-                  ) : (
-                    <span className="feed-sentinel-text">You've reached the end</span>
-                  )}
+              {/* ─── Filter Tabs ─── */}
+              <div className="feed-tabs">
+                {FILTERS.map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setActiveFilter(f.key)}
+                    className={`feed-tab ${activeFilter === f.key ? "active" : ""}`}
+                  >
+                    {f.label}
+                    {activeFilter === f.key && <div className="feed-tab-glow" />}
+                  </button>
+                ))}
+              </div>
+
+              {/* ─── Trending Section ─── */}
+              {showTrending && (
+                <div className="feed-trending-section">
+                  <div className="feed-trending-header">
+                    <Flame size={16} className="text-orange-400" />
+                    <span className="feed-trending-title">Trending</span>
+                    <span className="feed-trending-subtitle">Popular projects right now</span>
+                  </div>
+                  <div className="trending-scroll">
+                    {trendingProjects.map((p) => (
+                      <ProjectCard
+                        key={p._id}
+                        project={p}
+                        compact
+                        isLiked={likedIds.has(p._id)}
+                        onLike={handleLike}
+                        onRequest={(project) => setReqModal({ open: true, project })}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </>
-            )}
-          </div>
+              )}
+
+              {/* ─── Main Cards ─── */}
+              {loading ? (
+                <div className="feed-loading">
+                  <Loader2 size={36} className="feed-spinner" />
+                  <p className="feed-loading-text">Loading projects...</p>
+                </div>
+              ) : projects.length === 0 ? (
+                <div className="feed-empty">
+                  <div className="feed-empty-icon">
+                    <FolderOpen size={32} className="text-indigo-400" />
+                  </div>
+                  <h3 className="feed-empty-title">No projects found</h3>
+                  <p className="feed-empty-desc">
+                    {searchQuery
+                      ? "Try adjusting your search or filters"
+                      : "Be the first to create a project and find collaborators"}
+                  </p>
+                  <button
+                    onClick={() => onNavigate("create")}
+                    className="gradient-btn inline-flex items-center gap-2"
+                  >
+                    <Plus size={16} />
+                    Create your first project
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="feed-cards">
+                    {projects.map((project, index) => (
+                      <div
+                        key={project._id}
+                        className="feed-card-wrapper"
+                        style={{ animationDelay: `${Math.min(index % PAGE_LIMIT, 6) * 40}ms` }}
+                      >
+                        <ProjectCard
+                          project={project}
+                          isLiked={likedIds.has(project._id)}
+                          isSaved={savedIds.has(project._id)}
+                          onLike={handleLike}
+                          onSave={handleSave}
+                          onComment={handleComment}
+                          onRequest={(p) => setReqModal({ open: true, project: p })}
+                          onViewProject={handleViewProject}
+                          likeLoading={likeLoading === project._id}
+                          commentLoading={commentLoading === project._id}
+                          showThumbnail={index % 3 === 1}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div ref={sentinelRef} className="feed-sentinel">
+                    {loadingMore ? (
+                      <div className="feed-sentinel-inner">
+                        <Loader2 size={20} className="feed-spinner-sm" />
+                        <span>Loading more projects...</span>
+                      </div>
+                    ) : hasMore ? (
+                      <span className="feed-sentinel-text">Scroll for more</span>
+                    ) : (
+                      <span className="feed-sentinel-text">You've reached the end</span>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Insights Panel */}
