@@ -168,8 +168,14 @@ export default function ProjectCard({
             {memberCount > 0 && (
               <div className="feed-card-members">
                 <div className="feed-card-members-avatars">
-                  {Array.from({ length: Math.min(memberCount, 3) }).map((_, i) => (
-                    <div key={i} className="feed-card-member-dot" />
+                  {project.members.slice(0, 3).map((m) => (
+                    <div
+                      key={m._id || m}
+                      className="feed-card-member-dot"
+                      title={m.username || "Member"}
+                    >
+                      {m.username ? m.username[0].toUpperCase() : ""}
+                    </div>
                   ))}
                 </div>
                 <span className="feed-card-member-count">{memberCount}</span>

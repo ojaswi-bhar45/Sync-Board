@@ -61,6 +61,14 @@ router.get("/feed", async (req, res) => {
           },
         },
         {
+          $lookup: {
+            from: "users",
+            localField: "members",
+            foreignField: "_id",
+            as: "memberUsers",
+          },
+        },
+        {
           $addFields: {
             comments: {
               $map: {
@@ -85,11 +93,13 @@ router.get("/feed", async (req, res) => {
                 },
               },
             },
+            members: "$memberUsers",
           },
         },
         {
           $project: {
             commentUsers: 0,
+            memberUsers: 0,
             likesCount: 0,
           },
         },
@@ -302,13 +312,56 @@ router.put("/request/:projectId/:requestId", auth, async (req, res) => {
     request.status = status;
 
     if (status === "accepted") {
-      if (!project.members.includes(request.user)) {
+      const isAlreadyMember = project.members.some(
+        (m) => m.toString() === request.user.toString(),
+      );
+      if (!isAlreadyMember) {
         project.members.push(request.user);
       }
     }
 
     await project.save();
     res.json({ message: `Request ${status}` });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ─── My Teams (projects where user is a member) ───
+router.get("/my-teams", auth, async (req, res) => {
+  try {
+    const projects = await Project.find({
+      members: req.user._id,
+    }).populate("userId", "username email")
+      .populate("members", "username");
+
+    res.json({ teams: projects });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ─── Remove member from project (owner only) ───
+router.delete("/:id/members/:userId", auth, async (req, res) => {
+  try {
+    const project = await Project.findOne({
+      _id: req.params.id,
+      userId: req.user._id,
+    });
+    if (!project)
+      return res.status(404).json({ message: "Project not found" });
+
+    if (req.params.userId === req.user._id.toString())
+      return res.status(400).json({ message: "Cannot remove yourself as owner" });
+
+    const idx = project.members.indexOf(req.params.userId);
+    if (idx === -1)
+      return res.status(404).json({ message: "Member not found" });
+
+    project.members.splice(idx, 1);
+    await project.save();
+
+    res.json({ message: "Member removed", members: project.members });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

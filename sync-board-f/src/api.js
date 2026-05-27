@@ -68,3 +68,16 @@ export function updateJoinRequest(token, projectId, requestId, status) {
     body: JSON.stringify({ status }),
   }).then(handleResponse);
 }
+
+export function getMyTeams(token) {
+  return fetch(`${API}/api/projects/my-teams`, {
+    headers: headers(token),
+  }).then(handleResponse);
+}
+
+export function removeMember(token, projectId, userId) {
+  return fetch(`${API}/api/projects/${projectId}/members/${userId}`, {
+    method: "DELETE",
+    headers: headers(token),
+  }).then(handleResponse);
+}

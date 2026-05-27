@@ -3,7 +3,7 @@ import { Loader2, UserCheck, UserX, Send, Check, X, Clock, ArrowUpRight } from "
 import { toast } from "../components/Toast";
 import { getIncomingRequests, getMyRequests } from "../api";
 
-export default function CollaborationRequestsView({ token, onUpdateJoinRequest, onNavigate }) {
+export default function CollaborationRequestsView({ token, onUpdateJoinRequest, onNavigate, onProjectsChanged }) {
   const [activeTab, setActiveTab] = useState("incoming");
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
@@ -48,6 +48,7 @@ export default function CollaborationRequestsView({ token, onUpdateJoinRequest, 
       await onUpdateJoinRequest(token, projectId, requestId, action);
       if (action === "accepted") {
         toast("Collaborator accepted!");
+        onProjectsChanged?.();
       } else {
         toast("Request rejected");
       }

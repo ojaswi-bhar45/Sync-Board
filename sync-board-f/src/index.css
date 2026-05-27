@@ -2174,6 +2174,12 @@ body {
   border: 2px solid #1e1e1e;
   margin-left: -6px;
   background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.5625rem;
+  font-weight: 700;
 }
 
 .feed-card-member-dot:first-child {

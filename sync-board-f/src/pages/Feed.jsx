@@ -11,6 +11,7 @@ import {
   sendJoinRequest,
 } from "../api";
 import CollaborationRequestsView from "../components/CollaborationRequestsView";
+import TeamsView from "../components/TeamsView";
 import { updateJoinRequest } from "../api";
 import {
   Loader2, FolderOpen, Search, Plus, Sparkles,
@@ -62,14 +63,14 @@ function filterParams(activeFilter) {
 function FeedLeftNav({ onNavigate, user, activeView, onFeedNav }) {
   const links = [
     { icon: Home, view: "feed", label: "Home" },
-    { icon: Compass, view: "explore", label: "Explore" },
+    { icon: Users, view: "teams", label: "My Teams" },
     { icon: Bell, view: "notifications", label: "Notifications" },
     { icon: MessageSquare, view: "messages", label: "Messages" },
     { icon: Handshake, view: "collaboration", label: "Collaboration" },
   ];
 
   const handleClick = (view) => {
-    if (view === "collaboration") {
+    if (view === "collaboration" || view === "teams") {
       onFeedNav?.(view);
     } else {
       onNavigate(view);
@@ -420,6 +421,10 @@ export default function Feed({ onNavigate }) {
     setFeedView(view);
   };
 
+  const handleProjectsChanged = useCallback(() => {
+    loadInitialProjects(activeFilter, searchQuery);
+  }, [loadInitialProjects, activeFilter, searchQuery]);
+
   const showTrending = trendingProjects.length > 0 && activeFilter === "all" && !searchQuery;
 
   return (
@@ -434,6 +439,12 @@ export default function Feed({ onNavigate }) {
             <CollaborationRequestsView
               token={token}
               onUpdateJoinRequest={updateJoinRequest}
+              onNavigate={onNavigate}
+              onProjectsChanged={handleProjectsChanged}
+            />
+          ) : feedView === "teams" ? (
+            <TeamsView
+              token={token}
               onNavigate={onNavigate}
             />
           ) : (
