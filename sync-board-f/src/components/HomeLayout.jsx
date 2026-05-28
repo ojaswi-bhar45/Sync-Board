@@ -17,13 +17,28 @@ export default function HomeLayout() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [feedSubView, setFeedSubView] = useState(null);
+  const [chatProjectId, setChatProjectId] = useState(null);
+  const [chatProjectName, setChatProjectName] = useState('');
+
+  const handleStartChat = (projectId, projectName) => {
+    setChatProjectId(projectId);
+    setChatProjectName(projectName || '');
+    setChatOpen(true);
+  };
+
+  const handleChatClose = () => {
+    setChatProjectId(null);
+    setChatProjectName('');
+    setChatOpen(false);
+  };
 
   const openProject = (project) => {
     setSelectedProject(project);
     setActiveView('workspace');
   };
 
-  const handleNavigate = (view, project) => {
+  const handleNavigate = (view, project, subView) => {
     if (view === 'canvas') view = 'workspace';
     if (view === 'workspace' && project) {
       setSelectedProject(project);
@@ -31,6 +46,8 @@ export default function HomeLayout() {
       setSelectedProject(null);
     }
     setActiveView(view);
+    if (subView) setFeedSubView(subView);
+    else setFeedSubView(null);
     setSidebarOpen(false);
   };
 
@@ -49,6 +66,7 @@ export default function HomeLayout() {
           theme={theme}
           onNavigate={handleNavigate}
           activeView={activeViewForSidebar}
+          activeSubView={feedSubView}
           user={user}
           onLogout={logout}
           isMobileOpen={sidebarOpen}
@@ -64,11 +82,26 @@ export default function HomeLayout() {
             </button>
             <span className="text-sm font-semibold text-white">SyncBoard</span>
           </div>
-          {activeView === 'feed' && <Feed onNavigate={handleNavigate} />}
+          {activeView === 'feed' && (
+            <Feed
+              onNavigate={handleNavigate}
+              initialSubView={feedSubView}
+              clearSubView={() => setFeedSubView(null)}
+              onStartChat={handleStartChat}
+            />
+          )}
           {activeView === 'create' && <CreateProject onNavigate={handleNavigate} />}
           {activeView === 'profile' && <Profile />}
           {activeView === 'workspace' && <Workspace project={selectedProject} />}
-          {activeView !== 'create' && <ChatPanel isOpen={chatOpen} setIsOpen={setChatOpen} />}
+          {activeView !== 'create' && (
+            <ChatPanel
+              projectId={chatProjectId}
+              projectName={chatProjectName}
+              isOpen={chatOpen}
+              setIsOpen={setChatOpen}
+              onClose={handleChatClose}
+            />
+          )}
 
           {/* ─── Mobile Bottom Tab Bar ─── */}
           <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden flex items-center justify-around h-14 bg-[var(--bg-sidebar)] border-t border-[var(--border-color)] backdrop-blur-xl bg-opacity-90">

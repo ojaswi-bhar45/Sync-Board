@@ -43,13 +43,13 @@ const TRENDING_TAGS = [
   { tag: "mongodb", count: 76 },
 ];
 
-const TOP_CONTRIBUTORS = [
-  { name: "Alex Rivera", projects: 12, avatar: "AR" },
-  { name: "Sarah Chen", projects: 9, avatar: "SC" },
-  { name: "Mike Johnson", projects: 7, avatar: "MJ" },
-  { name: "Emma Wilson", projects: 5, avatar: "EW" },
-  { name: "David Kim", projects: 4, avatar: "DK" },
-];
+// const TOP_CONTRIBUTORS = [
+//   { name: "Alex Rivera", projects: 12, avatar: "AR" },
+//   { name: "Sarah Chen", projects: 9, avatar: "SC" },
+//   { name: "Mike Johnson", projects: 7, avatar: "MJ" },
+//   { name: "Emma Wilson", projects: 5, avatar: "EW" },
+//   { name: "David Kim", projects: 4, avatar: "DK" },
+// ];
 
 function filterParams(activeFilter) {
   const params = {};
@@ -142,7 +142,7 @@ function FeedRightPanel() {
       </div>
 
       {/* Top Contributors */}
-      <div className="widget-card">
+      {/* <div className="widget-card">
         <div className="widget-header">
           <Users size={16} className="text-indigo-400" />
           <span className="widget-title">Top Contributors</span>
@@ -170,15 +170,22 @@ function FeedRightPanel() {
             );
           })}
         </div>
-      </div>
+      </div> */}
 
     </aside>
   );
 }
 
-export default function Feed({ onNavigate }) {
+export default function Feed({ onNavigate, initialSubView, clearSubView, onStartChat }) {
   const { token, user } = useAuth();
   const [feedView, setFeedView] = useState("feed");
+
+  useEffect(() => {
+    if (initialSubView && (initialSubView === "teams" || initialSubView === "collaboration")) {
+      setFeedView(initialSubView);
+      clearSubView?.();
+    }
+  }, [initialSubView, clearSubView]);
   const [teamsRefreshKey, setTeamsRefreshKey] = useState(0);
   const [projects, setProjects] = useState([]);
   const [trendingProjects, setTrendingProjects] = useState([]);
@@ -448,6 +455,7 @@ export default function Feed({ onNavigate }) {
             <TeamsView
               token={token}
               onNavigate={onNavigate}
+              onStartChat={onStartChat}
               refreshKey={teamsRefreshKey}
             />
           ) : (

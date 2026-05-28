@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Loader2, Users, ArrowUpRight, Clock } from "lucide-react";
+import { Loader2, Users, ArrowUpRight, Clock, MessageSquare } from "lucide-react";
 import { toast } from "../components/Toast";
 import { getMyTeams } from "../api";
 
-export default function TeamsView({ token, onNavigate, refreshKey }) {
+export default function TeamsView({ token, onNavigate, onStartChat, refreshKey }) {
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -87,13 +87,22 @@ export default function TeamsView({ token, onNavigate, refreshKey }) {
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={() => onNavigate?.("workspace", project)}
-                  className="collab-view-project"
-                  title="View project"
-                >
-                  <ArrowUpRight size={14} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => onStartChat?.(project._id, project.title)}
+                    className="collab-view-project"
+                    title="Team Chat"
+                  >
+                    <MessageSquare size={14} />
+                  </button>
+                  <button
+                    onClick={() => onNavigate?.("workspace", project)}
+                    className="collab-view-project"
+                    title="View project"
+                  >
+                    <ArrowUpRight size={14} />
+                  </button>
+                </div>
               </div>
 
               {/* Project owner + member initials */}

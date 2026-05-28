@@ -75,6 +75,20 @@ export function getMyTeams(token) {
   }).then(handleResponse);
 }
 
+export function getMessages(token, projectId) {
+  return fetch(`${API}/api/chat/${projectId}`, {
+    headers: headers(token),
+  }).then(handleResponse);
+}
+
+export function sendMessage(token, projectId, text) {
+  return fetch(`${API}/api/chat/${projectId}`, {
+    method: "POST",
+    headers: headers(token),
+    body: JSON.stringify({ text }),
+  }).then(handleResponse);
+}
+
 export function removeMember(token, projectId, userId) {
   return fetch(`${API}/api/projects/${projectId}/members/${userId}`, {
     method: "DELETE",

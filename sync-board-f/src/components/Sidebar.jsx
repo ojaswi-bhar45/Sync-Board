@@ -8,6 +8,7 @@ import {
   Grid3x3,
   PlusSquare,
   LogOut,
+  Handshake,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -15,6 +16,7 @@ export default function Sidebar({
   theme,
   onNavigate,
   activeView,
+  activeSubView,
   user,
   onLogout,
   isMobileOpen,
@@ -55,18 +57,20 @@ export default function Sidebar({
             <FolderKanban size={20} />
             <span>Projects</span>
           </button>
-          {/* <a href="#" className="nav-item">
-            <MessageSquare size={20} />
-            <span>Collaboration Requests</span>
-          </a> */}
-          <a href="#" className="nav-item">
+          <button
+            className={`nav-item ${activeSubView === "teams" ? "active" : ""}`}
+            onClick={() => onNavigate("feed", null, "teams")}
+          >
             <Users size={20} />
-            <span>Team</span>
-          </a>
-          <a href="#" className="nav-item">
-            <MessageSquare size={20} />
-            <span>Messages</span>
-          </a>
+            <span>My Team</span>
+          </button>
+          <button
+            className={`nav-item ${activeSubView === "collaboration" ? "active" : ""}`}
+            onClick={() => onNavigate("feed", null, "collaboration")}
+          >
+            <Handshake size={20} />
+            <span>Collaboration</span>
+          </button>
           
         </nav>
 

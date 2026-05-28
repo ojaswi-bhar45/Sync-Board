@@ -66,7 +66,7 @@ export default function Workspace({ project }) {
       )}
       <Toolbar activeTool={activeTool} setActiveTool={setActiveTool} onAddSticky={handleAddSticky} />
       <Canvas elements={elements} onDelete={handleDelete} />
-      <ChatPanel />
+      <ChatPanel projectId={project?._id} projectName={project?.title} />
     </div>
   );
 }
