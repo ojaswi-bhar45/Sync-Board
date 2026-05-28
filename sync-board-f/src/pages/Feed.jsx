@@ -179,6 +179,7 @@ function FeedRightPanel() {
 export default function Feed({ onNavigate }) {
   const { token, user } = useAuth();
   const [feedView, setFeedView] = useState("feed");
+  const [teamsRefreshKey, setTeamsRefreshKey] = useState(0);
   const [projects, setProjects] = useState([]);
   const [trendingProjects, setTrendingProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -423,6 +424,7 @@ export default function Feed({ onNavigate }) {
 
   const handleProjectsChanged = useCallback(() => {
     loadInitialProjects(activeFilter, searchQuery);
+    setTeamsRefreshKey((k) => k + 1);
   }, [loadInitialProjects, activeFilter, searchQuery]);
 
   const showTrending = trendingProjects.length > 0 && activeFilter === "all" && !searchQuery;
@@ -446,6 +448,7 @@ export default function Feed({ onNavigate }) {
             <TeamsView
               token={token}
               onNavigate={onNavigate}
+              refreshKey={teamsRefreshKey}
             />
           ) : (
             <div className="feed-center-scroll">

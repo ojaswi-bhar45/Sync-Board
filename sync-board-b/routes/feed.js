@@ -327,11 +327,14 @@ router.put("/request/:projectId/:requestId", auth, async (req, res) => {
   }
 });
 
-// ─── My Teams (projects where user is a member) ───
+// ─── My Teams (projects where user is a member or owner) ───
 router.get("/my-teams", auth, async (req, res) => {
   try {
     const projects = await Project.find({
-      members: req.user._id,
+      $or: [
+        { userId: req.user._id },
+        { members: req.user._id },
+      ],
     }).populate("userId", "username email")
       .populate("members", "username");
 

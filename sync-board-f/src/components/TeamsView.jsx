@@ -3,7 +3,7 @@ import { Loader2, Users, ArrowUpRight, Clock } from "lucide-react";
 import { toast } from "../components/Toast";
 import { getMyTeams } from "../api";
 
-export default function TeamsView({ token, onNavigate }) {
+export default function TeamsView({ token, onNavigate, refreshKey }) {
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,7 +27,7 @@ export default function TeamsView({ token, onNavigate }) {
 
     fetchTeams();
     return () => { cancelled = true; };
-  }, [token]);
+  }, [token, refreshKey]);
 
   const formatDate = (dateStr) => {
     return new Date(dateStr).toLocaleDateString("en-US", {
