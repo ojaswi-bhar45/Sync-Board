@@ -4,6 +4,11 @@ import ProtectedRoute from './components/ProtectedRoute';
 import HomeLayout from './components/HomeLayout';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Feed from './pages/Feed';
+import CreateProject from './pages/CreateProject';
+import Profile from './components/Profile';
+import ProjectsList from './components/ProjectsList';
+import Workspace from './components/Workspace';
 
 export default function App() {
   return (
@@ -11,7 +16,14 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/dashboard" element={<ProtectedRoute><HomeLayout /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><HomeLayout /></ProtectedRoute>}>
+          <Route index element={<Navigate to="feed" replace />} />
+          <Route path="feed" element={<Feed />} />
+          <Route path="create" element={<CreateProject />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="projects" element={<ProjectsList />} />
+          <Route path="workspace/:projectId" element={<Workspace />} />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

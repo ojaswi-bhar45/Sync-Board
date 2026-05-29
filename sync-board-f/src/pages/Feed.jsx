@@ -1,6 +1,8 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useChat } from "../context/ChatContext";
 import ProjectCard from "../components/ProjectCard";
 import RequestModal from "../components/RequestModal";
 import { toast } from "../components/Toast";
@@ -43,14 +45,6 @@ const TRENDING_TAGS = [
   { tag: "mongodb", count: 76 },
 ];
 
-// const TOP_CONTRIBUTORS = [
-//   { name: "Alex Rivera", projects: 12, avatar: "AR" },
-//   { name: "Sarah Chen", projects: 9, avatar: "SC" },
-//   { name: "Mike Johnson", projects: 7, avatar: "MJ" },
-//   { name: "Emma Wilson", projects: 5, avatar: "EW" },
-//   { name: "David Kim", projects: 4, avatar: "DK" },
-// ];
-
 function filterParams(activeFilter) {
   const params = {};
   if (activeFilter === "trending") params.sort = "trending";
@@ -60,12 +54,12 @@ function filterParams(activeFilter) {
   return params;
 }
 
-function FeedLeftNav({ onNavigate, user, activeView, onFeedNav }) {
+function FeedLeftNav({ user, activeView, onFeedNav }) {
+  const navigate = useNavigate();
   const links = [
     { icon: Home, view: "feed", label: "Home" },
     { icon: Users, view: "teams", label: "My Teams" },
     { icon: Bell, view: "notifications", label: "Notifications" },
-    // { icon: MessageSquare, view: "messages", label: "Messages" },
     { icon: Handshake, view: "collaboration", label: "Collaboration" },
   ];
 
@@ -73,7 +67,7 @@ function FeedLeftNav({ onNavigate, user, activeView, onFeedNav }) {
     if (view === "collaboration" || view === "teams") {
       onFeedNav?.(view);
     } else {
-      onNavigate(view);
+      navigate("/dashboard/feed");
     }
   };
 
@@ -93,7 +87,7 @@ function FeedLeftNav({ onNavigate, user, activeView, onFeedNav }) {
           ))}
         </div>
         <button
-          onClick={() => onNavigate("profile")}
+          onClick={() => navigate("/dashboard/profile")}
           className="feed-left-nav-avatar"
           title="Profile"
         >
@@ -123,7 +117,6 @@ function FeedRightPanel() {
 
   return (
     <aside className="feed-right-panel">
-      {/* Trending Tags */}
       <div className="widget-card">
         <div className="widget-header">
           <Flame size={16} className="text-orange-400" />
@@ -140,52 +133,26 @@ function FeedRightPanel() {
           ))}
         </div>
       </div>
-
-      {/* Top Contributors */}
-      {/* <div className="widget-card">
-        <div className="widget-header">
-          <Users size={16} className="text-indigo-400" />
-          <span className="widget-title">Top Contributors</span>
-        </div>
-        <div className="widget-divider" />
-        <div className="widget-contributors">
-          {TOP_CONTRIBUTORS.map((c) => {
-            const isFollowing = following.has(c.name);
-            return (
-              <div key={c.name} className="contributor-row">
-                <div className="contributor-avatar">
-                  <span>{c.avatar}</span>
-                </div>
-                <div className="contributor-info">
-                  <span className="contributor-name">{c.name}</span>
-                  <span className="contributor-projects">{c.projects} projects</span>
-                </div>
-                <button
-                  onClick={() => toggleFollow(c.name)}
-                  className={`follow-btn ${isFollowing ? "following" : ""}`}
-                >
-                  {isFollowing ? "Following" : "Follow"}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div> */}
-
     </aside>
   );
 }
 
-export default function Feed({ onNavigate, initialSubView, clearSubView, onStartChat }) {
+export default function Feed() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { token, user } = useAuth();
+  const { startChat } = useChat();
   const [feedView, setFeedView] = useState("feed");
 
+  const initialView = searchParams.get('view');
   useEffect(() => {
-    if (initialSubView && (initialSubView === "teams" || initialSubView === "collaboration")) {
-      setFeedView(initialSubView);
-      clearSubView?.();
+    if (initialView === "teams" || initialView === "collaboration") {
+      setFeedView(initialView);
+      searchParams.delete('view');
+      setSearchParams(searchParams, { replace: true });
     }
-  }, [initialSubView, clearSubView]);
+  }, []);
+
   const [teamsRefreshKey, setTeamsRefreshKey] = useState(0);
   const [projects, setProjects] = useState([]);
   const [trendingProjects, setTrendingProjects] = useState([]);
@@ -272,11 +239,11 @@ export default function Feed({ onNavigate, initialSubView, clearSubView, onStart
     loadInitialProjects("all", "");
     fetchTrending();
     setSavedIds(buildSavedSet());
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     loadInitialProjects(activeFilter, searchQuery);
-  }, [activeFilter, searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeFilter, searchQuery]);
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
@@ -422,7 +389,7 @@ export default function Feed({ onNavigate, initialSubView, clearSubView, onStart
   };
 
   const handleViewProject = (project) => {
-    onNavigate("workspace", project);
+    navigate(`/dashboard/workspace/${project._id}`, { state: { project } });
   };
 
   const handleFeedNav = (view) => {
@@ -439,28 +406,19 @@ export default function Feed({ onNavigate, initialSubView, clearSubView, onStart
   return (
     <>
       <div className="feed-3col-layout">
-        {/* Left Mini Sidebar */}
-        <FeedLeftNav onNavigate={onNavigate} user={user} activeView={feedView} onFeedNav={handleFeedNav} />
+        <FeedLeftNav user={user} activeView={feedView} onFeedNav={handleFeedNav} />
 
-        {/* Center Content */}
         <div className="feed-center">
           {feedView === "collaboration" ? (
             <CollaborationRequestsView
-              token={token}
-              onUpdateJoinRequest={updateJoinRequest}
-              onNavigate={onNavigate}
               onProjectsChanged={handleProjectsChanged}
             />
           ) : feedView === "teams" ? (
             <TeamsView
-              token={token}
-              onNavigate={onNavigate}
-              onStartChat={onStartChat}
               refreshKey={teamsRefreshKey}
             />
           ) : (
             <div className="feed-center-scroll">
-              {/* ─── Header ─── */}
               <div className="feed-header">
                 <div className="feed-header-left">
                   <h1 className="feed-title">
@@ -482,7 +440,7 @@ export default function Feed({ onNavigate, initialSubView, clearSubView, onStart
                     </div>
                   </div>
                   <button
-                    onClick={() => onNavigate("create")}
+                    onClick={() => navigate("/dashboard/create")}
                     className="new-post-btn"
                   >
                     <Plus size={18} />
@@ -494,7 +452,6 @@ export default function Feed({ onNavigate, initialSubView, clearSubView, onStart
                 </div>
               </div>
 
-              {/* ─── Filter Tabs ─── */}
               <div className="feed-tabs">
                 {FILTERS.map((f) => (
                   <button
@@ -508,7 +465,6 @@ export default function Feed({ onNavigate, initialSubView, clearSubView, onStart
                 ))}
               </div>
 
-              {/* ─── Trending Section ─── */}
               {showTrending && (
                 <div className="feed-trending-section">
                   <div className="feed-trending-header">
@@ -531,7 +487,6 @@ export default function Feed({ onNavigate, initialSubView, clearSubView, onStart
                 </div>
               )}
 
-              {/* ─── Main Cards ─── */}
               {loading ? (
                 <div className="feed-loading">
                   <Loader2 size={36} className="feed-spinner" />
@@ -549,7 +504,7 @@ export default function Feed({ onNavigate, initialSubView, clearSubView, onStart
                       : "Be the first to create a project and find collaborators"}
                   </p>
                   <button
-                    onClick={() => onNavigate("create")}
+                    onClick={() => navigate("/dashboard/create")}
                     className="gradient-btn inline-flex items-center gap-2"
                   >
                     <Plus size={16} />
@@ -600,7 +555,6 @@ export default function Feed({ onNavigate, initialSubView, clearSubView, onStart
           )}
         </div>
 
-        {/* Right Insights Panel */}
         <FeedRightPanel />
       </div>
 

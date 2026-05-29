@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, FileText } from 'lucide-react';
-import { API } from '../api';
+import { editDashboardProject } from '../api';
 
 export default function EditProjectModal({ project, token, onClose, onUpdated }) {
   const [description, setDescription] = useState(project.description);
@@ -12,15 +12,7 @@ export default function EditProjectModal({ project, token, onClose, onUpdated })
     if (!description) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/edit-project/${project._id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ description, note }),
-      });
-      const updated = await res.json();
+      const updated = await editDashboardProject(token, project._id, { description, note });
       if (updated._id) {
         onUpdated(updated);
         onClose();

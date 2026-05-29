@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Plus } from 'lucide-react';
 import ProjectCard from './ProjectCard';
 import NewProjectModal from './NewProjectModal';
 import EditProjectModal from './EditProjectModal';
-import { API } from '../api';
+import { getMyProjects } from '../api';
 
-export default function Dashboard({ onOpenProject }) {
+export default function Dashboard() {
+  const navigate = useNavigate();
   const { user, token } = useAuth();
   const [projects, setProjects] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -19,10 +21,7 @@ export default function Dashboard({ onOpenProject }) {
 
   const fetchProjects = async () => {
     try {
-      const res = await fetch(`${API}/api/project`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
+      const data = await getMyProjects(token);
       setProjects(data);
     } catch (err) {
       console.error(err);
@@ -79,7 +78,7 @@ export default function Dashboard({ onOpenProject }) {
       ) : (
         <div className="projects-grid">
           {projects.map((project) => (
-            <ProjectCard key={project._id} project={project} onEdit={setEditingProject} onClick={onOpenProject} />
+            <ProjectCard key={project._id} project={project} onEdit={setEditingProject} onClick={(p) => navigate(`/dashboard/workspace/${p._id}`, { state: { project: p } })} />
           ))}
         </div>
       )}

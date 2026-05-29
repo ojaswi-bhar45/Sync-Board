@@ -1,14 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageSquare, X, Send, Loader2, StickyNote } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useChat } from '../context/ChatContext';
 import { getMessages, sendMessage as sendMessageApi, getMyTeams, createCanvasElement } from '../api';
 import { toast } from './Toast';
 
-export default function ChatPanel({ projectId, projectName, isOpen: externalOpen, setIsOpen: externalSetOpen, onClose, isAdmin }) {
+export default function ChatPanel({ projectId: propProjectId, projectName: propProjectName, isAdmin: propIsAdmin }) {
   const { token, user } = useAuth();
+  const { chatOpen, chatProjectId, chatProjectName, setChatOpen, startChat } = useChat();
+  const projectId = propProjectId || chatProjectId;
+  const projectName = propProjectName || chatProjectName;
+  const isAdmin = propIsAdmin;
+
   const [internalOpen, internalSetOpen] = useState(true);
-  const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
-  const setIsOpen = externalSetOpen !== undefined ? externalSetOpen : internalSetOpen;
+  const isOpen = propProjectId !== undefined ? internalOpen : chatOpen;
+  const setIsOpen = propProjectId !== undefined ? internalSetOpen : setChatOpen;
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -93,6 +99,7 @@ export default function ChatPanel({ projectId, projectName, isOpen: externalOpen
     const team = teams.find((t) => t._id === pid);
     setSelectedProjectId(pid);
     setSelectedProjectName(team?.title || '');
+    startChat?.(pid, team?.title);
   };
 
   const handleCreateSticky = async () => {
@@ -121,7 +128,6 @@ export default function ChatPanel({ projectId, projectName, isOpen: externalOpen
 
   const handleClose = () => {
     setIsOpen(false);
-    onClose?.();
   };
 
   if (!isOpen) {

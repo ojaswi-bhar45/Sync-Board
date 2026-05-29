@@ -2,7 +2,7 @@ const User = require("../models/User");
 const auth = require("../middlewares/auth");
 const router = require("express").Router();
 
-router.get("/profile", auth, async (req, res) => {
+router.get("/", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select("-password");
     res.json({ user });
@@ -11,7 +11,7 @@ router.get("/profile", auth, async (req, res) => {
   }
 });
 
-router.patch("/edit-profile", auth, async (req, res) => {
+router.patch("/edit", auth, async (req, res) => {
   let { username, contactNumber, address, linkedInProfile, githubProfile } =
     req.body;
   try {

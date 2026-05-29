@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "../components/Toast";
 import { createProject } from "../api";
@@ -128,7 +129,8 @@ function SectionCard({ icon: Icon, title, children, error }) {
   );
 }
 
-export default function CreateProject({ onNavigate }) {
+export default function CreateProject() {
+  const navigate = useNavigate();
   const { token } = useAuth();
   const [form, setForm] = useState({ title: "", description: "", note: "" });
   const [techTags, setTechTags] = useState([]);
@@ -183,7 +185,7 @@ export default function CreateProject({ onNavigate }) {
         note: form.note.trim(),
       });
       toast("Project created successfully!");
-      onNavigate("feed");
+      navigate("/dashboard/feed");
     } catch (err) {
       toast(err.message, "error");
     } finally {
@@ -201,20 +203,16 @@ export default function CreateProject({ onNavigate }) {
   return (
     <div className="flex-1 flex flex-col overflow-y-auto">
       <div className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 lg:pt-10 pb-24 sm:pb-24 lg:pb-10">
-        {/* Back button */}
         <button
-          onClick={() => onNavigate("feed")}
+          onClick={() => navigate("/dashboard/feed")}
           className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-white transition-colors mb-6 group"
         >
           <ArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
           Back to Feed
         </button>
 
-        {/* Two-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 lg:gap-10">
-          {/* ─── LEFT COLUMN: Form ─── */}
           <div>
-            {/* Header */}
             <div className="mb-8">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
@@ -230,7 +228,6 @@ export default function CreateProject({ onNavigate }) {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5 pb-36 lg:pb-0">
-              {/* Project Title */}
               <SectionCard icon={Heading1} title="Project Title" error={touched.title && errors.title}>
                 <input
                   type="text"
@@ -249,7 +246,6 @@ export default function CreateProject({ onNavigate }) {
                 )}
               </SectionCard>
 
-              {/* Description */}
               <SectionCard icon={FileText} title="Description">
                 <textarea
                   ref={descRef}
@@ -272,7 +268,6 @@ export default function CreateProject({ onNavigate }) {
                 </div>
               </SectionCard>
 
-              {/* Tech Stack */}
               <SectionCard icon={Layers} title="Tech Stack">
                 <TechStackInput tags={techTags} onChange={setTechTags} />
                 <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
@@ -281,7 +276,6 @@ export default function CreateProject({ onNavigate }) {
                 </p>
               </SectionCard>
 
-              {/* Notes */}
               <SectionCard icon={StickyNote} title="Notes">
                 <textarea
                   ref={noteRef}
@@ -294,7 +288,6 @@ export default function CreateProject({ onNavigate }) {
                 />
               </SectionCard>
 
-              {/* Desktop CTA */}
               <div className="hidden lg:block pt-2">
                 <button
                   type="submit"
@@ -317,9 +310,7 @@ export default function CreateProject({ onNavigate }) {
             </form>
           </div>
 
-          {/* ─── RIGHT COLUMN: Tips & Info ─── */}
           <div className="space-y-5 lg:pt-16">
-            {/* Project Tips */}
             <div className="glass-card">
               <div className="flex items-center gap-2.5 mb-5">
                 <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
@@ -342,7 +333,6 @@ export default function CreateProject({ onNavigate }) {
               </div>
             </div>
 
-            {/* How Collaboration Works */}
             <div className="glass-card">
               <div className="flex items-center gap-2.5 mb-5">
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
@@ -368,7 +358,6 @@ export default function CreateProject({ onNavigate }) {
               </div>
             </div>
 
-            {/* Trending Technologies */}
             <div className="glass-card">
               <div className="flex items-center gap-2.5 mb-4">
                 <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
@@ -398,7 +387,6 @@ export default function CreateProject({ onNavigate }) {
         </div>
       </div>
 
-      {/* ─── MOBILE STICKY CTA ─── */}
       <div className="lg:hidden fixed bottom-14 left-0 right-0 z-50">
         <div className="sticky-cta">
           <button

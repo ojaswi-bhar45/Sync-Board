@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { Loader2, UserCheck, UserX, Send, Check, X, Clock, ArrowUpRight } from "lucide-react";
 import { toast } from "../components/Toast";
-import { getIncomingRequests, getMyRequests } from "../api";
+import { getIncomingRequests, getMyRequests, updateJoinRequest } from "../api";
 
-export default function CollaborationRequestsView({ token, onUpdateJoinRequest, onNavigate, onProjectsChanged }) {
+export default function CollaborationRequestsView({ onProjectsChanged }) {
+  const navigate = useNavigate();
+  const { token } = useAuth();
   const [activeTab, setActiveTab] = useState("incoming");
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
@@ -45,7 +49,7 @@ export default function CollaborationRequestsView({ token, onUpdateJoinRequest, 
   const handleAction = async (projectId, requestId, action) => {
     setActionLoading(requestId);
     try {
-      await onUpdateJoinRequest(token, projectId, requestId, action);
+      await updateJoinRequest(token, projectId, requestId, action);
       if (action === "accepted") {
         toast("Collaborator accepted!");
         onProjectsChanged?.();
@@ -91,7 +95,6 @@ export default function CollaborationRequestsView({ token, onUpdateJoinRequest, 
         <h1 className="feed-title">
           Collaboration Requests
         </h1>
-        {/* <p className="feed-subtitle">Manage incoming requests and track your sent applications</p> */}
       </div>
 
       <div className="collab-tabs">
@@ -141,7 +144,7 @@ export default function CollaborationRequestsView({ token, onUpdateJoinRequest, 
                     </div>
                   </div>
                   <button
-                    onClick={() => onNavigate?.("workspace", { _id: req.projectId })}
+                    onClick={() => navigate(`/dashboard/workspace/${req.projectId}`, { state: { project: { _id: req.projectId } } })}
                     className="collab-view-project"
                     title="View project"
                   >

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Toolbar from './Toolbar';
 import Canvas from './Whiteboard/Canvas';
@@ -7,7 +8,10 @@ import { getCanvasElements, createCanvasElement, updateCanvasElement, deleteCanv
 import { toast } from './Toast';
 import { Loader2 } from 'lucide-react';
 
-export default function Workspace({ project }) {
+export default function Workspace() {
+  const { projectId } = useParams();
+  const location = useLocation();
+  const project = location.state?.project;
   const { token, user } = useAuth();
   const [activeTool, setActiveTool] = useState('pointer');
   const [elements, setElements] = useState([]);
@@ -16,13 +20,13 @@ export default function Workspace({ project }) {
   const isAdmin = project?.userId?._id === user?._id || project?.userId === user?._id;
 
   useEffect(() => {
-    if (!project?._id || !token) return;
+    if (!projectId || !token) return;
     let cancelled = false;
 
     (async () => {
       setLoading(true);
       try {
-        const data = await getCanvasElements(token, project._id);
+        const data = await getCanvasElements(token, projectId);
         if (!cancelled) setElements(data.elements || []);
       } catch (err) {
         if (!cancelled) toast(err.message, 'error');
@@ -32,12 +36,12 @@ export default function Workspace({ project }) {
     })();
 
     return () => { cancelled = true; };
-  }, [project?._id, token]);
+  }, [projectId, token]);
 
   const handleDelete = async (id) => {
-    if (!token || !project?._id) return;
+    if (!token || !projectId) return;
     try {
-      await deleteCanvasElement(token, project._id, id);
+      await deleteCanvasElement(token, projectId, id);
       setElements(prev => prev.filter(el => el._id !== id));
     } catch (err) {
       toast(err.message, 'error');
@@ -45,20 +49,20 @@ export default function Workspace({ project }) {
   };
 
   const handleUpdate = async (id, data) => {
-    if (!token || !project?._id) return;
+    if (!token || !projectId) return;
     setElements(prev => prev.map(el => (el._id === id ? { ...el, ...data } : el)));
     try {
-      await updateCanvasElement(token, project._id, id, data);
+      await updateCanvasElement(token, projectId, id, data);
     } catch (err) {
       toast(err.message, 'error');
     }
   };
 
   const handleAddSticky = async () => {
-    if (!token || !project?._id) return;
+    if (!token || !projectId) return;
     try {
       const colors = ['yellow', 'blue', 'pink', 'green'];
-      const data = await createCanvasElement(token, project._id, {
+      const data = await createCanvasElement(token, projectId, {
         type: 'sticky',
         color: colors[Math.floor(Math.random() * colors.length)],
         top: 100 + Math.random() * 300,
@@ -75,14 +79,14 @@ export default function Workspace({ project }) {
 
   if (!project) {
     return (
-      <div className="main-content flex items-center justify-center">
+      <div className="flex items-center justify-center h-64">
         <p className="text-gray-500">Select a project to view its workspace.</p>
       </div>
     );
   }
 
   return (
-    <div className="main-content">
+    <>
       <div className="workspace-header">
         <span className="workspace-project-name">{project.title}</span>
         {isAdmin && <span className="text-xs text-indigo-400 ml-2">(Admin)</span>}
@@ -95,7 +99,7 @@ export default function Workspace({ project }) {
       ) : (
         <Canvas elements={elements} onDelete={handleDelete} onUpdate={handleUpdate} />
       )}
-      <ChatPanel projectId={project._id} projectName={project.title} isAdmin={isAdmin} />
-    </div>
+      <ChatPanel projectId={projectId} projectName={project.title} isAdmin={isAdmin} />
+    </>
   );
 }

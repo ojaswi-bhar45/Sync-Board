@@ -1,9 +1,15 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { useChat } from "../context/ChatContext";
 import { Loader2, Users, ArrowUpRight, Clock, MessageSquare } from "lucide-react";
 import { toast } from "../components/Toast";
 import { getMyTeams } from "../api";
 
-export default function TeamsView({ token, onNavigate, onStartChat, refreshKey }) {
+export default function TeamsView({ refreshKey }) {
+  const navigate = useNavigate();
+  const { token } = useAuth();
+  const { startChat } = useChat();
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -89,14 +95,14 @@ export default function TeamsView({ token, onNavigate, onStartChat, refreshKey }
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => onStartChat?.(project._id, project.title)}
+                    onClick={() => startChat(project._id, project.title)}
                     className="collab-view-project"
                     title="Team Chat"
                   >
                     <MessageSquare size={14} />
                   </button>
                   <button
-                    onClick={() => onNavigate?.("workspace", project)}
+                    onClick={() => navigate(`/dashboard/workspace/${project._id}`, { state: { project } })}
                     className="collab-view-project"
                     title="View project"
                   >
@@ -105,7 +111,6 @@ export default function TeamsView({ token, onNavigate, onStartChat, refreshKey }
                 </div>
               </div>
 
-              {/* Project owner + member initials */}
               <div className="feed-card-members" style={{ marginBottom: 10 }}>
                 <div className="feed-card-members-avatars">
                   <div

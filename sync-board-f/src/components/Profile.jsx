@@ -10,7 +10,7 @@ import {
   CheckCircle,
   Circle,
 } from "lucide-react";
-import { API } from "../api";
+import { getProfile, updateProfile } from "../api";
 
 const PROFILE_FIELDS = [
   { key: "username", label: "Username", icon: User, editable: true },
@@ -47,10 +47,7 @@ export default function Profile() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${API}/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
+        const data = await getProfile(token);
         if (data.user) setProfile(data.user);
       } catch (err) {
         console.error(err);
@@ -82,21 +79,13 @@ export default function Profile() {
     setMessage("");
     setMessageType("");
     try {
-      const res = await fetch(`${API}/edit-profile`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          username: profile.username,
-          contactNumber: profile.contactNumber,
-          address: profile.address,
-          linkedInProfile: profile.linkedInProfile,
-          githubProfile: profile.githubProfile,
-        }),
+      const data = await updateProfile(token, {
+        username: profile.username,
+        contactNumber: profile.contactNumber,
+        address: profile.address,
+        linkedInProfile: profile.linkedInProfile,
+        githubProfile: profile.githubProfile,
       });
-      const data = await res.json();
       if (data.user) {
         setMessage("Profile updated successfully!");
         setMessageType("success");

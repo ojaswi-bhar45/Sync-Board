@@ -2,26 +2,34 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const dns = require("dns");
-const authRoute = require("./controllers/authController");
-const projectRoutes = require("./routes/project");
-const feedRoutes = require("./routes/feed");
-const profileRoutes = require("./routes/profile");
-const chatRoutes = require("./routes/chat");
-const canvasRoutes = require("./routes/canvas");
+const helmet = require("helmet");
+const compression = require("compression");
+const apiRoutes = require("./routes/index");
+const errorHandler = require("./middlewares/errorHandler");
 
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 require("dotenv").config();
 
 const app = express();
-app.use(cors());
+
+app.use(helmet());
+app.use(compression());
+
+const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
+app.use(
+  cors({
+    origin: corsOrigin.split(",").map((s) => s.trim()),
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    credentials: true,
+  }),
+);
+
 app.use(express.json());
-app.use("/", authRoute);
-app.use("/api", projectRoutes);
-app.use("/api/projects", feedRoutes);
-app.use("/api/chat", chatRoutes);
-app.use("/api/canvas", canvasRoutes);
-app.use("/", profileRoutes);
+
+app.use("/api/v1", apiRoutes);
+
+app.use(errorHandler);
 
 mongoose
   .connect(process.env.MONGO_URL)

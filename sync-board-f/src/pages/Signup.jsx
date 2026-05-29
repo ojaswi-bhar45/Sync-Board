@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-
-const API_BASE = 'http://localhost:5000';
+import { signup as apiSignup } from '../api';
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -39,12 +38,7 @@ export default function Signup() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password }),
-      });
-      const data = await res.json();
+      const data = await apiSignup({ username, email, password });
 
       if (data.user) {
         if (data.token) login(data.user, data.token);

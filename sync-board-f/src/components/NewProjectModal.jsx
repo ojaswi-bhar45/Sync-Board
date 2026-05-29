@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { API } from '../api';
+import { createDashboardProject } from '../api';
 
 export default function NewProjectModal({ token, onClose, onCreated }) {
   const [title, setTitle] = useState('');
@@ -13,15 +13,7 @@ export default function NewProjectModal({ token, onClose, onCreated }) {
     if (!title || !description) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/add-projects`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ title, description, note }),
-      });
-      const project = await res.json();
+      const project = await createDashboardProject(token, { title, description, note });
       onCreated(project);
       onClose();
     } catch (err) {

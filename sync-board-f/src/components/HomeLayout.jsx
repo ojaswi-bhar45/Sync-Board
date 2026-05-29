@@ -1,79 +1,25 @@
 import { useState } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { ChatProvider, useChat } from '../context/ChatContext';
 import { useTheme } from '../hooks/useTheme';
 import { Menu, Grid3x3, PlusSquare, User, MessageSquare } from 'lucide-react';
 import Sidebar from './Sidebar';
-import Feed from '../pages/Feed';
-import CreateProject from '../pages/CreateProject';
-import Workspace from './Workspace';
-import Profile from './Profile';
 import ChatPanel from './ChatPanel';
 import ToastContainer from './Toast';
-import ProjectsList from './ProjectsList';
 
-export default function HomeLayout() {
+function HomeLayoutInner() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [activeView, setActiveView] = useState('feed');
-  const [selectedProject, setSelectedProject] = useState(null);
+  const { chatOpen, setChatOpen } = useChat();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [feedSubView, setFeedSubView] = useState(null);
-  const [chatProjectId, setChatProjectId] = useState(null);
-  const [chatProjectName, setChatProjectName] = useState('');
 
-  const handleStartChat = (projectId, projectName) => {
-    setChatProjectId(projectId);
-    setChatProjectName(projectName || '');
-    setChatOpen(true);
-  };
+  const currentPath = location.pathname.replace('/dashboard/', '');
+  const isWorkspace = currentPath.startsWith('workspace');
+  const isCreate = currentPath === 'create';
 
-  const handleChatClose = () => {
-    setChatProjectId(null);
-    setChatProjectName('');
-    setChatOpen(false);
-  };
-
-  const openProject = (project) => {
-    setSelectedProject(project);
-    setActiveView('workspace');
-  };
-
-  const handleNavigate = (view, project, subView) => {
-    if (view === 'projects' && project) {
-      setSelectedProject(project);
-      setChatProjectId(project._id);
-      setChatProjectName(project.title || '');
-      setActiveView('workspace');
-    } else if (view === 'workspace' && project) {
-      setSelectedProject(project);
-      setChatProjectId(project._id);
-      setChatProjectName(project.title || '');
-      setActiveView('workspace');
-    } else if (view === 'canvas') {
-      setSelectedProject(null);
-      setChatProjectId(null);
-      setChatProjectName('');
-      setActiveView('projects');
-    } else if (view !== 'workspace') {
-      setSelectedProject(null);
-      setChatProjectId(null);
-      setChatProjectName('');
-      setActiveView(view);
-    } else {
-      setActiveView(view);
-    }
-    if (subView) setFeedSubView(subView);
-    else setFeedSubView(null);
-    setSidebarOpen(false);
-  };
-
-  const activeViewForSidebar =
-    activeView === 'workspace' ? 'canvas' :
-    activeView === 'projects' ? 'canvas' :
-    activeView === 'feed' ? 'feed' :
-    activeView === 'create' ? 'create' :
-    activeView === 'profile' ? 'profile' : activeView;
+  const showChat = !isWorkspace && !isCreate;
 
   return (
     <>
@@ -82,9 +28,6 @@ export default function HomeLayout() {
         <Sidebar
           toggleTheme={toggleTheme}
           theme={theme}
-          onNavigate={handleNavigate}
-          activeView={activeViewForSidebar}
-          activeSubView={feedSubView}
           user={user}
           onLogout={logout}
           isMobileOpen={sidebarOpen}
@@ -100,65 +43,54 @@ export default function HomeLayout() {
             </button>
             <span className="text-sm font-semibold text-white">SyncBoard</span>
           </div>
-          {activeView === 'feed' && (
-            <Feed
-              onNavigate={handleNavigate}
-              initialSubView={feedSubView}
-              clearSubView={() => setFeedSubView(null)}
-              onStartChat={handleStartChat}
-            />
-          )}
-          {activeView === 'create' && <CreateProject onNavigate={handleNavigate} />}
-          {activeView === 'profile' && <Profile />}
-          {activeView === 'projects' && (
-            <ProjectsList
-              onNavigate={handleNavigate}
-              onStartChat={handleStartChat}
-            />
-          )}
-          {activeView === 'workspace' && <Workspace project={selectedProject} />}
-          {activeView !== 'create' && activeView !== 'workspace' && (
-            <ChatPanel
-              projectId={chatProjectId}
-              projectName={chatProjectName}
-              isOpen={chatOpen}
-              setIsOpen={setChatOpen}
-              onClose={handleChatClose}
-            />
+
+          <Outlet />
+
+          {showChat && (
+            <ChatPanel />
           )}
 
-          {/* ─── Mobile Bottom Tab Bar ─── */}
-          <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden flex items-center justify-around h-14 bg-[var(--bg-sidebar)] border-t border-[var(--border-color)] backdrop-blur-xl bg-opacity-90">
-            {[
-              { view: 'feed', icon: Grid3x3, label: 'Feed' },
-              { view: 'create', icon: PlusSquare, label: 'New' },
-              { view: 'profile', icon: User, label: 'Profile' },
-            ].map(({ view, icon: Icon, label }) => (
+          {!isWorkspace && !isCreate && (
+            <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden flex items-center justify-around h-14 bg-[var(--bg-sidebar)] border-t border-[var(--border-color)] backdrop-blur-xl bg-opacity-90">
+              {[
+                { view: 'feed', icon: Grid3x3, label: 'Feed' },
+                { view: 'create', icon: PlusSquare, label: 'New' },
+                { view: 'profile', icon: User, label: 'Profile' },
+              ].map(({ view, icon: Icon, label }) => (
+                <a
+                  key={view}
+                  href={`/dashboard/${view}`}
+                  className={`flex flex-col items-center justify-center gap-0.5 h-full px-4 transition-colors ${
+                    currentPath === view ? 'text-[var(--accent-color)]' : 'text-gray-500'
+                  }`}
+                  style={{ minHeight: '44px', minWidth: '44px' }}
+                >
+                  <Icon size={20} />
+                  <span className="text-[10px] font-medium">{label}</span>
+                </a>
+              ))}
               <button
-                key={view}
-                onClick={() => handleNavigate(view)}
+                onClick={() => setChatOpen(!chatOpen)}
                 className={`flex flex-col items-center justify-center gap-0.5 h-full px-4 transition-colors ${
-                  activeView === view ? 'text-[var(--accent-color)]' : 'text-gray-500'
+                  chatOpen ? 'text-[var(--accent-color)]' : 'text-gray-500'
                 }`}
                 style={{ minHeight: '44px', minWidth: '44px' }}
               >
-                <Icon size={20} />
-                <span className="text-[10px] font-medium">{label}</span>
+                <MessageSquare size={20} />
+                <span className="text-[10px] font-medium">Chat</span>
               </button>
-            ))}
-            <button
-              onClick={() => setChatOpen(!chatOpen)}
-              className={`flex flex-col items-center justify-center gap-0.5 h-full px-4 transition-colors ${
-                chatOpen ? 'text-[var(--accent-color)]' : 'text-gray-500'
-              }`}
-              style={{ minHeight: '44px', minWidth: '44px' }}
-            >
-              <MessageSquare size={20} />
-              <span className="text-[10px] font-medium">Chat</span>
-            </button>
-          </nav>
+            </nav>
+          )}
         </div>
       </div>
     </>
+  );
+}
+
+export default function HomeLayout() {
+  return (
+    <ChatProvider>
+      <HomeLayoutInner />
+    </ChatProvider>
   );
 }

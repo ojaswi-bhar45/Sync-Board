@@ -1,3 +1,4 @@
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -14,14 +15,24 @@ import {
 export default function Sidebar({
   toggleTheme,
   theme,
-  onNavigate,
-  activeView,
-  activeSubView,
   user,
   onLogout,
   isMobileOpen,
   onMobileClose,
 }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const currentPath = location.pathname.replace('/dashboard/', '');
+  const searchParams = new URLSearchParams(location.search);
+  const activeSubView = searchParams.get('view');
+
+  const isActive = (path) => currentPath === path || currentPath.startsWith(path + '/');
+
+  const nav = (path) => {
+    onMobileClose();
+    navigate(path);
+  };
+
   return (
     <>
       {isMobileOpen && (
@@ -37,41 +48,40 @@ export default function Sidebar({
 
         <nav className="sidebar-nav">
           <button
-            className={`nav-item ${activeView === "feed" ? "active" : ""}`}
-            onClick={() => onNavigate("feed")}
+            className={`nav-item ${isActive('feed') ? 'active' : ''}`}
+            onClick={() => nav('/dashboard/feed')}
           >
             <Grid3x3 size={20} />
             <span>Feed</span>
           </button>
           <button
-            className={`nav-item ${activeView === "create" ? "active" : ""}`}
-            onClick={() => onNavigate("create")}
+            className={`nav-item ${isActive('create') ? 'active' : ''}`}
+            onClick={() => nav('/dashboard/create')}
           >
             <PlusSquare size={20} />
             <span>Create Project</span>
           </button>
           <button
-            className={`nav-item ${activeView === "canvas" ? "active" : ""}`}
-            onClick={() => onNavigate("canvas")}
+            className={`nav-item ${isActive('projects') ? 'active' : ''}`}
+            onClick={() => nav('/dashboard/projects')}
           >
             <FolderKanban size={20} />
             <span>Projects</span>
           </button>
           <button
-            className={`nav-item ${activeSubView === "teams" ? "active" : ""}`}
-            onClick={() => onNavigate("feed", null, "teams")}
+            className={`nav-item ${activeSubView === 'teams' ? 'active' : ''}`}
+            onClick={() => nav('/dashboard/feed?view=teams')}
           >
             <Users size={20} />
             <span>My Team</span>
           </button>
           <button
-            className={`nav-item ${activeSubView === "collaboration" ? "active" : ""}`}
-            onClick={() => onNavigate("feed", null, "collaboration")}
+            className={`nav-item ${activeSubView === 'collaboration' ? 'active' : ''}`}
+            onClick={() => nav('/dashboard/feed?view=collaboration')}
           >
             <Handshake size={20} />
             <span>Collaboration</span>
           </button>
-          
         </nav>
 
         <div className="sidebar-footer">
@@ -86,7 +96,7 @@ export default function Sidebar({
           </button>
           <button
             className="profile-mini"
-            onClick={() => onNavigate("profile")}
+            onClick={() => nav('/dashboard/profile')}
           >
             <div className="avatar">
               <img
