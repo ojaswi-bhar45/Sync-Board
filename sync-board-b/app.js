@@ -7,6 +7,7 @@ const projectRoutes = require("./routes/project");
 const feedRoutes = require("./routes/feed");
 const profileRoutes = require("./routes/profile");
 const chatRoutes = require("./routes/chat");
+const canvasRoutes = require("./routes/canvas");
 
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
@@ -19,6 +20,7 @@ app.use("/", authRoute);
 app.use("/api", projectRoutes);
 app.use("/api/projects", feedRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/canvas", canvasRoutes);
 app.use("/", profileRoutes);
 
 mongoose

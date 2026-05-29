@@ -89,6 +89,35 @@ export function sendMessage(token, projectId, text) {
   }).then(handleResponse);
 }
 
+export function getCanvasElements(token, projectId) {
+  return fetch(`${API}/api/canvas/${projectId}`, {
+    headers: headers(token),
+  }).then(handleResponse);
+}
+
+export function createCanvasElement(token, projectId, data) {
+  return fetch(`${API}/api/canvas/${projectId}`, {
+    method: "POST",
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handleResponse);
+}
+
+export function updateCanvasElement(token, projectId, elementId, data) {
+  return fetch(`${API}/api/canvas/${projectId}/${elementId}`, {
+    method: "PATCH",
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handleResponse);
+}
+
+export function deleteCanvasElement(token, projectId, elementId) {
+  return fetch(`${API}/api/canvas/${projectId}/${elementId}`, {
+    method: "DELETE",
+    headers: headers(token),
+  }).then(handleResponse);
+}
+
 export function removeMember(token, projectId, userId) {
   return fetch(`${API}/api/projects/${projectId}/members/${userId}`, {
     method: "DELETE",

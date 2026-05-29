@@ -1,18 +1,14 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 
-export function useDraggable(initialPosition) {
+export function useDraggable(initialPosition, onDragEnd) {
   const [position, setPosition] = useState(initialPosition);
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
+  const lastPosition = useRef(initialPosition);
 
   const onPointerDown = (e) => {
-    // Only drag if left click
     if (e.button !== 0) return;
-    
-    // Don't drag if clicking inside an input or textarea
-    if (e.target.tagName.toLowerCase() === 'textarea' || e.target.tagName.toLowerCase() === 'input') {
-      return;
-    }
+    if (e.target.tagName.toLowerCase() === 'textarea' || e.target.tagName.toLowerCase() === 'input') return;
 
     isDragging.current = true;
     dragStart.current = {
@@ -24,16 +20,19 @@ export function useDraggable(initialPosition) {
 
   const onPointerMove = (e) => {
     if (!isDragging.current) return;
-    setPosition({
+    const newPos = {
       left: e.clientX - dragStart.current.x,
       top: e.clientY - dragStart.current.y,
-    });
+    };
+    setPosition(newPos);
+    lastPosition.current = newPos;
   };
 
   const onPointerUp = (e) => {
     if (!isDragging.current) return;
     isDragging.current = false;
     e.currentTarget.releasePointerCapture(e.pointerId);
+    onDragEnd?.(lastPosition.current);
   };
 
   return {

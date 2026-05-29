@@ -65,7 +65,7 @@ function FeedLeftNav({ onNavigate, user, activeView, onFeedNav }) {
     { icon: Home, view: "feed", label: "Home" },
     { icon: Users, view: "teams", label: "My Teams" },
     { icon: Bell, view: "notifications", label: "Notifications" },
-    { icon: MessageSquare, view: "messages", label: "Messages" },
+    // { icon: MessageSquare, view: "messages", label: "Messages" },
     { icon: Handshake, view: "collaboration", label: "Collaboration" },
   ];
 

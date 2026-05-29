@@ -1,7 +1,7 @@
 import React from 'react';
 import { MousePointer2, PenTool, Type, Square, Circle, StickyNote, Image as ImageIcon, Share2 } from 'lucide-react';
 
-export default function Toolbar({ activeTool, setActiveTool, onAddSticky }) {
+export default function Toolbar({ activeTool, setActiveTool, onAddSticky, isAdmin }) {
   return (
     <div className="floating-toolbar">
       <div className="tool-group">
@@ -26,15 +26,17 @@ export default function Toolbar({ activeTool, setActiveTool, onAddSticky }) {
         <div className="divider"></div>
         <button className="tool-btn"><Square size={18} /></button>
         <button className="tool-btn"><Circle size={18} /></button>
-        <button 
-          className={`tool-btn ${activeTool === 'sticky' ? 'active' : ''}`}
-          onClick={() => {
-            setActiveTool('sticky');
-            onAddSticky();
-          }}
-        >
-          <StickyNote size={18} />
-        </button>
+        {isAdmin && (
+          <button 
+            className={`tool-btn ${activeTool === 'sticky' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTool('sticky');
+              onAddSticky();
+            }}
+          >
+            <StickyNote size={18} />
+          </button>
+        )}
         <button className="tool-btn"><ImageIcon size={18} /></button>
       </div>
 

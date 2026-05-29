@@ -499,6 +499,17 @@ body {
   opacity: 0.7;
 }
 
+.sticky-title-input {
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: inherit;
+  flex: 1;
+  min-width: 0;
+}
+
 .sticky-content {
   flex: 1;
   font-family: 'Caveat', 'Comic Sans MS', cursive;
@@ -571,6 +582,32 @@ body {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-muted);
+}
+
+.idea-edit-input {
+  background: transparent;
+  border: none;
+  outline: 1px solid var(--accent-color);
+  border-radius: 4px;
+  color: var(--text-main);
+  font: inherit;
+  padding: 2px 4px;
+  width: 100%;
+}
+
+.idea-edit-textarea {
+  background: transparent;
+  border: none;
+  outline: 1px solid var(--accent-color);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  padding: 4px;
+  width: 100%;
+  resize: vertical;
+  margin-bottom: 16px;
 }
 
 /* Floating Chat Panel */

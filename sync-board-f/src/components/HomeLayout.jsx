@@ -9,6 +9,7 @@ import Workspace from './Workspace';
 import Profile from './Profile';
 import ChatPanel from './ChatPanel';
 import ToastContainer from './Toast';
+import ProjectsList from './ProjectsList';
 
 export default function HomeLayout() {
   const { user, logout } = useAuth();
@@ -39,13 +40,29 @@ export default function HomeLayout() {
   };
 
   const handleNavigate = (view, project, subView) => {
-    if (view === 'canvas') view = 'workspace';
-    if (view === 'workspace' && project) {
+    if (view === 'projects' && project) {
       setSelectedProject(project);
+      setChatProjectId(project._id);
+      setChatProjectName(project.title || '');
+      setActiveView('workspace');
+    } else if (view === 'workspace' && project) {
+      setSelectedProject(project);
+      setChatProjectId(project._id);
+      setChatProjectName(project.title || '');
+      setActiveView('workspace');
+    } else if (view === 'canvas') {
+      setSelectedProject(null);
+      setChatProjectId(null);
+      setChatProjectName('');
+      setActiveView('projects');
     } else if (view !== 'workspace') {
       setSelectedProject(null);
+      setChatProjectId(null);
+      setChatProjectName('');
+      setActiveView(view);
+    } else {
+      setActiveView(view);
     }
-    setActiveView(view);
     if (subView) setFeedSubView(subView);
     else setFeedSubView(null);
     setSidebarOpen(false);
@@ -53,6 +70,7 @@ export default function HomeLayout() {
 
   const activeViewForSidebar =
     activeView === 'workspace' ? 'canvas' :
+    activeView === 'projects' ? 'canvas' :
     activeView === 'feed' ? 'feed' :
     activeView === 'create' ? 'create' :
     activeView === 'profile' ? 'profile' : activeView;
@@ -92,8 +110,14 @@ export default function HomeLayout() {
           )}
           {activeView === 'create' && <CreateProject onNavigate={handleNavigate} />}
           {activeView === 'profile' && <Profile />}
+          {activeView === 'projects' && (
+            <ProjectsList
+              onNavigate={handleNavigate}
+              onStartChat={handleStartChat}
+            />
+          )}
           {activeView === 'workspace' && <Workspace project={selectedProject} />}
-          {activeView !== 'create' && (
+          {activeView !== 'create' && activeView !== 'workspace' && (
             <ChatPanel
               projectId={chatProjectId}
               projectName={chatProjectName}

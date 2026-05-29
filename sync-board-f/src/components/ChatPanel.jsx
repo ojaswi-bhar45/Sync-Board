@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageSquare, X, Send, Loader2 } from 'lucide-react';
+import { MessageSquare, X, Send, Loader2, StickyNote } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getMessages, sendMessage as sendMessageApi, getMyTeams } from '../api';
+import { getMessages, sendMessage as sendMessageApi, getMyTeams, createCanvasElement } from '../api';
 import { toast } from './Toast';
 
-export default function ChatPanel({ projectId, projectName, isOpen: externalOpen, setIsOpen: externalSetOpen, onClose }) {
+export default function ChatPanel({ projectId, projectName, isOpen: externalOpen, setIsOpen: externalSetOpen, onClose, isAdmin }) {
   const { token, user } = useAuth();
   const [internalOpen, internalSetOpen] = useState(true);
   const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
-  const setIsOpen = externalSetOpen !== undefined ? externalSetOpen : internalOpen;
+  const setIsOpen = externalSetOpen !== undefined ? externalSetOpen : internalSetOpen;
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -16,6 +16,9 @@ export default function ChatPanel({ projectId, projectName, isOpen: externalOpen
   const [teams, setTeams] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState(projectId || null);
   const [selectedProjectName, setSelectedProjectName] = useState(projectName || '');
+  const [stickyInput, setStickyInput] = useState(false);
+  const [stickyText, setStickyText] = useState('');
+  const [stickySaving, setStickySaving] = useState(false);
   const chatAreaRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -92,6 +95,30 @@ export default function ChatPanel({ projectId, projectName, isOpen: externalOpen
     setSelectedProjectName(team?.title || '');
   };
 
+  const handleCreateSticky = async () => {
+    if (!stickyText.trim() || !token || !selectedProjectId) return;
+    setStickySaving(true);
+    try {
+      const colors = ['yellow', 'blue', 'pink', 'green'];
+      await createCanvasElement(token, selectedProjectId, {
+        type: 'sticky',
+        color: colors[Math.floor(Math.random() * colors.length)],
+        title: stickyText.trim(),
+        content: '',
+        top: 100 + Math.random() * 300,
+        left: 100 + Math.random() * 500,
+        rotation: (Math.random() - 0.5) * 6,
+      });
+      toast('Sticky note created!');
+      setStickyText('');
+      setStickyInput(false);
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setStickySaving(false);
+    }
+  };
+
   const handleClose = () => {
     setIsOpen(false);
     onClose?.();
@@ -116,8 +143,52 @@ export default function ChatPanel({ projectId, projectName, isOpen: externalOpen
             <span>Team Chat</span>
           )}
         </div>
-        <button className="tool-btn" onClick={handleClose}><X size={18} /></button>
+        <div className="flex items-center gap-1">
+          {isAdmin && selectedProjectId && (
+            <button
+              className="tool-btn"
+              onClick={() => { setStickyInput(!stickyInput); setStickyText(''); }}
+              title="Add sticky note to canvas"
+            >
+              <StickyNote size={16} />
+            </button>
+          )}
+          <button className="tool-btn" onClick={handleClose}><X size={18} /></button>
+        </div>
       </div>
+
+      {stickyInput && isAdmin && selectedProjectId && (
+        <div className="chat-sticky-input" style={{ padding: '8px 12px', borderBottom: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              type="text"
+              value={stickyText}
+              onChange={(e) => setStickyText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleCreateSticky(); }}
+              placeholder="Feature name for sticky note..."
+              style={{
+                flex: 1,
+                background: 'var(--bg-panel)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 8,
+                padding: '6px 10px',
+                fontSize: 13,
+                color: 'var(--text-main)',
+                outline: 'none',
+              }}
+              autoFocus
+            />
+            <button
+              onClick={handleCreateSticky}
+              disabled={stickySaving || !stickyText.trim()}
+              className="tool-btn"
+              style={{ color: 'var(--accent-color)' }}
+            >
+              {stickySaving ? <Loader2 size={14} className="feed-spinner" /> : <Send size={14} />}
+            </button>
+          </div>
+        </div>
+      )}
 
       {!selectedProjectId && teams.length > 0 && (
         <div className="chat-team-selector">
