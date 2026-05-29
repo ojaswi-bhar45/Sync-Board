@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Loader2, StickyNote } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
@@ -28,42 +28,33 @@ export default function ChatPanel({ projectId: propProjectId, projectName: propP
   const chatAreaRef = useRef(null);
   const inputRef = useRef(null);
 
-  const fetchMessages = useCallback(async (pid) => {
-    if (!token || !pid) return;
-    setLoading(true);
-    try {
-      const data = await getMessages(token, pid);
-      setMessages(data.messages || []);
-    } catch (err) {
-      toast(err.message, 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  const fetchTeams = useCallback(async () => {
-    if (!token) return;
-    try {
-      const data = await getMyTeams(token);
-      setTeams(data.teams || []);
-    } catch {
-    }
-  }, [token]);
-
   useEffect(() => {
     if (projectId) {
-      setSelectedProjectId(projectId);
-      setSelectedProjectName(projectName || '');
+      Promise.resolve().then(() => {
+        setSelectedProjectId(projectId);
+        setSelectedProjectName(projectName || '');
+      });
     }
   }, [projectId, projectName]);
 
   useEffect(() => {
     if (selectedProjectId) {
-      fetchMessages(selectedProjectId);
+      let cancelled = false;
+      Promise.resolve().then(() => { if (!cancelled) setLoading(true); });
+      getMessages(token, selectedProjectId).then(data => {
+        if (!cancelled) setMessages(data.messages || []);
+      }).catch(err => {
+        if (!cancelled) toast(err.message, 'error');
+      }).finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+      return () => { cancelled = true; };
     } else if (isOpen) {
-      fetchTeams();
+      getMyTeams(token).then(data => {
+        setTeams(data.teams || []);
+      }).catch(() => {});
     }
-  }, [selectedProjectId, isOpen, fetchMessages, fetchTeams]);
+  }, [selectedProjectId, isOpen, token]);
 
   useEffect(() => {
     if (chatAreaRef.current) {

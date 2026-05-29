@@ -82,7 +82,7 @@ function CompletenessBar({ score }) {
 }
 
 export default function Profile() {
-  const { token, updateUser, user } = useAuth();
+  const { token, updateUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

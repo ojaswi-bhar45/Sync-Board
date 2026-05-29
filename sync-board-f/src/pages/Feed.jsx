@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useChat } from "../context/ChatContext";
 import ProjectCard from "../components/ProjectCard";
 import RequestModal from "../components/RequestModal";
 import { toast } from "../components/Toast";
@@ -14,11 +13,10 @@ import {
 } from "../api";
 import CollaborationRequestsView from "../components/CollaborationRequestsView";
 import TeamsView from "../components/TeamsView";
-import { updateJoinRequest } from "../api";
 import {
   Loader2, FolderOpen, Search, Plus, Sparkles,
-  SlidersHorizontal, Home, Compass, Bell, MessageSquare, Handshake,
-  Hash, Users, Flame, Eye,
+  SlidersHorizontal, Home, Bell, Handshake,
+  Hash, Users, Flame,
 } from "lucide-react";
 
 const PAGE_LIMIT = 12;
@@ -104,17 +102,6 @@ function FeedLeftNav({ user, activeView, onFeedNav }) {
 }
 
 function FeedRightPanel() {
-  const [following, setFollowing] = useState(new Set());
-
-  const toggleFollow = (name) => {
-    setFollowing((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
-  };
-
   return (
     <aside className="feed-right-panel">
       <div className="widget-card">
@@ -141,16 +128,16 @@ export default function Feed() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { token, user } = useAuth();
-  const { startChat } = useChat();
   const [feedView, setFeedView] = useState("feed");
 
-  const initialView = searchParams.get('view');
   useEffect(() => {
-    if (initialView === "teams" || initialView === "collaboration") {
-      setFeedView(initialView);
+    const view = searchParams.get('view');
+    if (view === "teams" || view === "collaboration") {
+      setFeedView(view);
       searchParams.delete('view');
       setSearchParams(searchParams, { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [teamsRefreshKey, setTeamsRefreshKey] = useState(0);
@@ -239,11 +226,12 @@ export default function Feed() {
     loadInitialProjects("all", "");
     fetchTrending();
     setSavedIds(buildSavedSet());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     loadInitialProjects(activeFilter, searchQuery);
-  }, [activeFilter, searchQuery]);
+  }, [activeFilter, searchQuery, loadInitialProjects]);
 
   const handleSearchChange = (e) => {
     const val = e.target.value;

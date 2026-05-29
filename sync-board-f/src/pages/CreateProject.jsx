@@ -113,7 +113,7 @@ function CharCounter({ current, max }) {
   );
 }
 
-function SectionCard({ icon: Icon, title, children, error }) {
+function SectionCard({ icon: Icon, title, children }) {
   return (
     <div className="glass-card">
       <div className="flex items-center gap-2.5 mb-4">

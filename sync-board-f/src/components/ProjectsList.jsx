@@ -3,9 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useChat } from "../context/ChatContext";
 import {
-  Loader2, FolderKanban, Users, Clock, ArrowUpRight,
-  MessageSquare, UserCheck, Search, SlidersHorizontal, Plus,
-  FolderOpen, Sparkles,
+  FolderKanban, Users, Clock, ArrowUpRight,
+  MessageSquare, UserCheck, Search, Plus,
+  FolderOpen,
 } from "lucide-react";
 import { toast } from "./Toast";
 import { getMyTeams } from "../api";

@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { useDraggable } from '../../hooks/useDraggable';
 
-export default function IdeaCard({ id, initialTop, initialLeft, badge, title, desc, progress, onUpdate, onDelete }) {
+export default function IdeaCard({ id, initialTop, initialLeft, badge, title, desc, progress, onUpdate }) {
   const [editField, setEditField] = useState(null);
   const [editValue, setEditValue] = useState('');
-  const [localBadge, setLocalBadge] = useState(badge);
-  const [localTitle, setLocalTitle] = useState(title);
-  const [localDesc, setLocalDesc] = useState(desc);
-  const [localProgress, setLocalProgress] = useState(progress);
+  const [localBadge] = useState(badge);
+  const [localTitle] = useState(title);
+  const [localDesc] = useState(desc);
+  const [localProgress] = useState(progress);
 
   const { position, dragHandlers } = useDraggable(
     { top: initialTop, left: initialLeft },

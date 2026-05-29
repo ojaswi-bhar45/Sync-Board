@@ -1,4 +1,3 @@
-import React from 'react';
 import { MousePointer2, PenTool, Type, Square, Circle, StickyNote, Image as ImageIcon, Share2 } from 'lucide-react';
 
 export default function Toolbar({ activeTool, setActiveTool, onAddSticky, isAdmin }) {

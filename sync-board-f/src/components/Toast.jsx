@@ -3,15 +3,10 @@ import { CheckCircle, XCircle, X } from "lucide-react";
 
 let toastId = 0;
 let addToastFn = null;
-const pendingQueue = [];
 
 export function toast(message, type = "success") {
   const entry = { id: ++toastId, message, type };
-  if (addToastFn) {
-    addToastFn(entry);
-  } else {
-    pendingQueue.push(entry);
-  }
+  addToastFn?.(entry);
 }
 
 export default function ToastContainer() {
@@ -23,9 +18,6 @@ export default function ToastContainer() {
 
   useEffect(() => {
     addToastFn = addToast;
-    while (pendingQueue.length) {
-      addToast(pendingQueue.shift());
-    }
     return () => { addToastFn = null; };
   }, [addToast]);
 

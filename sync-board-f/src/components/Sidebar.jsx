@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   FolderKanban,
   Users,
-  MessageSquare,
   Moon,
   Sun,
   Grid3x3,

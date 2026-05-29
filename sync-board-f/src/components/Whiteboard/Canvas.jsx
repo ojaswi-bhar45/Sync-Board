@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import StickyNote from './StickyNote';
 import IdeaCard from './IdeaCard';
 import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';

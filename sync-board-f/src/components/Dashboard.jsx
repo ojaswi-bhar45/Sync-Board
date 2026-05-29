@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Plus } from 'lucide-react';
@@ -15,11 +15,7 @@ export default function Dashboard() {
   const [editingProject, setEditingProject] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchProjects();
-  }, []);
-
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     try {
       const data = await getMyProjects(token);
       setProjects(data);
@@ -28,7 +24,11 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    Promise.resolve().then(() => fetchProjects());
+  }, [fetchProjects]);
 
   const handleCreated = (project) => {
     setProjects((prev) => [project, ...prev]);
