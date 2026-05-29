@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend — Lint & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: sync-board-b/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./sync-board-b
+        run: npm ci
+
+      - name: Lint
+        working-directory: ./sync-board-b
+        run: npx eslint . --ext .js
+
+      - name: Run tests
+        working-directory: ./sync-board-b
+        run: npm test
+        env:
+          NODE_ENV: test
+          JWT_SECRET: test-secret-key
+          MONGO_URL: mongodb://localhost:27017/test
+          PORT: 5001
+
+  frontend:
+    name: Frontend — Lint & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: sync-board-f/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./sync-board-f
+        run: npm ci
+
+      - name: Lint
+        working-directory: ./sync-board-f
+        run: npx eslint . --ext .js,.jsx
+
+      - name: Build
+        working-directory: ./sync-board-f
+        run: npm run build
+
+  health:
+    name: Backend — Health Check
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install & Start Server
+        working-directory: ./sync-board-b
+        run: |
+          npm ci
+          MONGO_URL=mongodb://localhost:27017/test \
+          JWT_SECRET=test-secret-key \
+          NODE_ENV=production \
+          PORT=5001 \
+          node app.js &
+          sleep 3
+
+      - name: Check /health endpoint
+        run: |
+          curl -f http://localhost:5001/health || exit 1

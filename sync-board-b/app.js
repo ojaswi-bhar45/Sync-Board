@@ -27,6 +27,10 @@ app.use(
 
 app.use(express.json());
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 app.use("/api/v1", apiRoutes);
 
 app.use(errorHandler);

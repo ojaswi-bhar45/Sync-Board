@@ -1,48 +1,91 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import {
-  User,
-  Mail,
-  Phone,
-  MapPin,
-  Link as LinkIcon,
-  Save,
-  CheckCircle,
-  Circle,
+  User, Mail, Phone, MapPin, Link as LinkIcon,
+  Save, Loader2, ExternalLink, Sparkles, Calendar,
+  CheckCircle2, Circle,
 } from "lucide-react";
 import { getProfile, updateProfile } from "../api";
+import { toast } from "./Toast";
 
 const PROFILE_FIELDS = [
   { key: "username", label: "Username", icon: User, editable: true },
   { key: "email", label: "Email", icon: Mail, editable: false },
-  {
-    key: "contactNumber",
-    label: "Contact Number",
-    icon: Phone,
-    editable: true,
-  },
+  { key: "contactNumber", label: "Contact Number", icon: Phone, editable: true },
   { key: "address", label: "Address", icon: MapPin, editable: true },
-  {
-    key: "linkedInProfile",
-    label: "LinkedIn Profile",
-    icon: LinkIcon,
-    editable: true,
-  },
-  {
-    key: "githubProfile",
-    label: "Github Profile",
-    icon: LinkIcon,
-    editable: true,
-  },
+  { key: "linkedInProfile", label: "LinkedIn", icon: LinkIcon, editable: true, external: true },
+  { key: "githubProfile", label: "GitHub", icon: LinkIcon, editable: true, external: true },
 ];
 
+function Skeleton() {
+  return (
+    <div className="profile-page">
+      <div className="profile-cover-skeleton" />
+      <div className="profile-content">
+        <div className="profile-avatar-skeleton" />
+        <div className="skeleton-line" style={{ width: "180px", marginTop: "3rem" }} />
+        <div className="skeleton-line" style={{ width: "120px" }} />
+        <div className="profile-stats-row">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="profile-stat-skeleton" />
+          ))}
+        </div>
+        <div className="profile-fields-grid">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="profile-field-skeleton" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompletenessBar({ score }) {
+  const label =
+    score === 100
+      ? "Complete!"
+      : score >= 75
+        ? "Almost done"
+        : score >= 50
+          ? "Halfway there"
+          : "Just getting started";
+
+  const Icon = score === 100 ? Sparkles : CheckCircle2;
+
+  return (
+    <div className="profile-completeness">
+      <div className="completeness-header">
+        <span className="completeness-label">
+          <Icon size={14} />
+          {label}
+        </span>
+        <span className="completeness-score">{score}%</span>
+      </div>
+      <div className="completeness-bar">
+        <div className="completeness-track">
+          <div className="completeness-fill" style={{ width: `${score}%` }} />
+          <div className="completeness-dot" style={{ left: `calc(${score}% - 6px)` }} />
+        </div>
+        <div className="completeness-milestones">
+          <span className={score >= 25 ? "passed" : ""} />
+          <span className={score >= 50 ? "passed" : ""} />
+          <span className={score >= 75 ? "passed" : ""} />
+          <span className={score >= 100 ? "passed" : ""} />
+        </div>
+      </div>
+      <div className="completeness-status">
+        <Calendar size={12} />
+        <span>{PROFILE_FIELDS.filter((f) => f.editable).length} editable fields</span>
+      </div>
+    </div>
+  );
+}
+
 export default function Profile() {
-  const { token, updateUser } = useAuth();
+  const { token, updateUser, user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -50,7 +93,7 @@ export default function Profile() {
         const data = await getProfile(token);
         if (data.user) setProfile(data.user);
       } catch (err) {
-        console.error(err);
+        toast(err.message, "error");
       } finally {
         setLoading(false);
       }
@@ -76,8 +119,6 @@ export default function Profile() {
 
   const handleSave = async () => {
     setSaving(true);
-    setMessage("");
-    setMessageType("");
     try {
       const data = await updateProfile(token, {
         username: profile.username,
@@ -87,111 +128,130 @@ export default function Profile() {
         githubProfile: profile.githubProfile,
       });
       if (data.user) {
-        setMessage("Profile updated successfully!");
-        setMessageType("success");
+        toast("Profile updated successfully!", "success");
         setProfile(data.user);
         updateUser(data.user);
       } else {
-        setMessage(data.message || "Failed to update profile");
-        setMessageType("error");
+        toast(data.message || "Failed to update profile", "error");
       }
     } catch {
-      setMessage("Unable to connect to server");
-      setMessageType("error");
+      toast("Unable to connect to server", "error");
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
-    return (
-    <div className="profile-container p-4 sm:p-6 lg:p-8 pb-24 sm:pb-24 lg:pb-8">
-        <div className="profile-loading">Loading profile...</div>
-      </div>
-    );
-  }
+  if (loading) return <Skeleton />;
+
+  const memberSince = profile?.Timestamp
+    ? new Date(profile.Timestamp).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
 
   return (
-    <div className="profile-container">
-      <div className="profile-header flex-col sm:flex-row items-center sm:items-center">
-        <div className="profile-avatar-large">
-          <img
-            src={`https://api.dicebear.com/7.x/initials/svg?seed=${profile?.username || "U"}`}
-            alt="User"
-          />
-        </div>
-        <div className="profile-header-info">
-          <h1 className="profile-title text-center sm:text-left">{profile?.username || "User"}</h1>
-          <p className="profile-email-display">{profile?.email || ""}</p>
-        </div>
-      </div>
+    <div className="profile-page">
+      <div className="profile-cover" />
 
-      <div className="profile-completeness">
-        <div className="completeness-header">
-          <span className="completeness-label">Profile Completeness</span>
-          <span className="completeness-score">{completeness.score}%</span>
+      <div className="profile-content">
+        <div className="profile-avatar-ring">
+          <div className="profile-avatar">
+            {(profile?.username || "U")[0].toUpperCase()}
+          </div>
         </div>
-        <div className="completeness-bar">
-          <div
-            className="completeness-fill"
-            style={{ width: `${completeness.score}%` }}
-          ></div>
-        </div>
-        <div className="completeness-status">
-          <CheckCircle size={16} />
-          <span>
-            {completeness.filled} of {completeness.total} fields completed
-          </span>
-        </div>
-      </div>
 
-      {message && (
-        <div className={`profile-message ${messageType}`}>{message}</div>
-      )}
+        <div className="profile-heading">
+          <h1>{profile?.username || "User"}</h1>
+          <p>{profile?.email || ""}</p>
+        </div>
 
-      <div className="profile-fields">
-        {PROFILE_FIELDS.map((field) => {
-          const Icon = field.icon;
-          const value = profile?.[field.key] || "";
-          const isFilled = value.toString().trim() !== "";
-          return (
-            <div
-              key={field.key}
-              className={`profile-field ${isFilled ? "filled" : "empty"}`}
-            >
-              <label className="profile-field-label">
-                <Icon size={18} />
-                <span>{field.label}</span>
-                {isFilled ? (
-                  <CheckCircle size={14} className="field-check" />
-                ) : (
-                  <Circle size={14} className="field-circle" />
-                )}
-              </label>
-              {field.editable ? (
-                <input
-                  type="text"
-                  className="profile-field-input"
-                  value={value}
-                  onChange={(e) => handleChange(field.key, e.target.value)}
-                  placeholder={`Enter your ${field.label.toLowerCase()}`}
-                />
-              ) : (
-                <div className="profile-field-value">{value}</div>
-              )}
+        <div className="profile-stats-row">
+          <div className="profile-stat-card">
+            <div className="profile-stat-icon"><User size={14} /></div>
+            <div className="profile-stat-value">{completeness.score}%</div>
+            <div className="profile-stat-label">Complete</div>
+          </div>
+          <div className="profile-stat-card">
+            <div className="profile-stat-icon"><CheckCircle2 size={14} /></div>
+            <div className="profile-stat-value">{completeness.filled}/{completeness.total}</div>
+            <div className="profile-stat-label">Fields Done</div>
+          </div>
+          {memberSince && (
+            <div className="profile-stat-card">
+              <div className="profile-stat-icon"><Calendar size={14} /></div>
+              <div className="profile-stat-value" style={{ fontSize: "0.7rem", fontWeight: 500 }}>{memberSince}</div>
+              <div className="profile-stat-label">Joined</div>
             </div>
-          );
-        })}
-      </div>
+          )}
+        </div>
 
-      <button
-        className="profile-save-btn max-w-sm lg:max-w-md mx-auto lg:mx-0"
-        onClick={handleSave}
-        disabled={saving}
-      >
-        <Save size={20} />
-        {saving ? "Saving..." : "Save Changes"}
-      </button>
+        <CompletenessBar score={completeness.score} />
+
+        <div className="profile-fields-grid">
+          {PROFILE_FIELDS.map((field) => {
+            const Icon = field.icon;
+            const value = profile?.[field.key] || "";
+            const isFilled = value.toString().trim() !== "";
+            const isUrl = field.external && isFilled;
+
+            return (
+              <div
+                key={field.key}
+                className={`profile-field-card ${isFilled ? "filled" : "empty"}`}
+              >
+                <label className="profile-field-label">
+                  <Icon size={15} />
+                  <span>{field.label}</span>
+                  {isFilled ? (
+                    <CheckCircle2 size={12} className="field-dot filled-dot" />
+                  ) : (
+                    <Circle size={12} className="field-dot empty-dot" />
+                  )}
+                </label>
+                {field.editable ? (
+                  <div className="profile-field-input-wrap">
+                    <input
+                      type="text"
+                      className="profile-field-input"
+                      value={value}
+                      onChange={(e) => handleChange(field.key, e.target.value)}
+                      placeholder={`Enter your ${field.label.toLowerCase()}`}
+                    />
+                    {isUrl && (
+                      <a
+                        href={value}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="profile-field-link"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ExternalLink size={14} />
+                      </a>
+                    )}
+                  </div>
+                ) : (
+                  <div className="profile-field-value">{value}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          className="profile-save-btn"
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <Save size={18} />
+          )}
+          {saving ? "Saving..." : "Save Changes"}
+        </button>
+      </div>
     </div>
   );
 }
