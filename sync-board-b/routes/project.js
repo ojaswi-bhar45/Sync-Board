@@ -1,4 +1,3 @@
-const mongoose = require("mongoose");
 const Project = require("../models/Project");
 const auth = require("../middlewares/auth");
 const router = require("express").Router();
