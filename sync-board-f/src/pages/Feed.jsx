@@ -57,7 +57,7 @@ function FeedLeftNav({ user, activeView, onFeedNav }) {
   const links = [
     { icon: Home, view: "feed", label: "Home" },
     { icon: Users, view: "teams", label: "My Teams" },
-    { icon: Bell, view: "notifications", label: "Notifications" },
+    // { icon: Bell, view: "notifications", label: "Notifications" },
     { icon: Handshake, view: "collaboration", label: "Collaboration" },
   ];
 

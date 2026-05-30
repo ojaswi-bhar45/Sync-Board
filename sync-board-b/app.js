@@ -24,6 +24,10 @@ app.use(
     credentials: true,
   }),
 );
+//to check the backend server is working or not 
+app.get("/", (req, res) => {
+  res.send("Working");
+});
 
 app.use(express.json());
 
