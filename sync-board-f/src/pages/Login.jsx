@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, LayoutDashboard } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { login as apiLogin } from '../api';
 import AuthCard from '../components/AuthCard';
+import Logo from '../components/Logo';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -49,7 +50,7 @@ export default function Login() {
     <AuthCard>
       <div className="auth-header">
         <div className="auth-brand">
-          <LayoutDashboard />
+          <Logo />
           <span>SyncBoard</span>
         </div>
         <h1 className="auth-title">Welcome Back</h1>

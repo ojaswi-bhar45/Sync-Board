@@ -1,6 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
   FolderKanban,
   Users,
   Moon,
@@ -10,6 +9,7 @@ import {
   LogOut,
   Handshake,
 } from "lucide-react";
+import Logo from "./Logo";
 
 export default function Sidebar({
   toggleTheme,
@@ -40,7 +40,7 @@ export default function Sidebar({
       <aside className={`sidebar ${isMobileOpen ? "open" : ""}`}>
         <div className="sidebar-header">
           <div className="brand-icon">
-            <LayoutDashboard size={24} />
+            <Logo size={20} />
           </div>
           <span>SyncBoard</span>
         </div>

@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Mail, Lock, Eye, EyeOff, LayoutDashboard, Check, X } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { signup as apiSignup } from '../api';
 import AuthCard from '../components/AuthCard';
 import PasswordStrength from '../components/PasswordStrength';
+import Logo from '../components/Logo';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
@@ -140,7 +141,7 @@ export default function Signup() {
     <AuthCard>
       <div className="auth-header">
         <div className="auth-brand">
-          <LayoutDashboard />
+          <Logo />
           <span>SyncBoard</span>
         </div>
         <h1 className="auth-title">Create Your Account</h1>
