@@ -222,12 +222,45 @@ export default function Feed() {
     }
   }, []);
 
+  const focusSearchInput = useCallback(() => {
+    const input = document.querySelector('.feed-search input');
+    input?.focus?.();
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      // Press "/" to focus search (unless typing in an input)
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const t = e.target;
+        const tag = (t && t.tagName ? t.tagName.toLowerCase() : '');
+        const isTyping = tag === 'input' || tag === 'textarea' || (t && t.isContentEditable);
+        if (!isTyping) {
+          e.preventDefault();
+          focusSearchInput();
+        }
+      }
+
+      // Esc clears search
+      if (e.key === 'Escape') {
+        if (document.activeElement && document.activeElement === document.querySelector('.feed-search input')) {
+          e.preventDefault();
+          setSearchInput('');
+          setSearchQuery('');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [focusSearchInput]);
+
   useEffect(() => {
     loadInitialProjects("all", "");
     fetchTrending();
     setSavedIds(buildSavedSet());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   useEffect(() => {
     loadInitialProjects(activeFilter, searchQuery);
