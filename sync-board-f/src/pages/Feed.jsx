@@ -15,7 +15,7 @@ import CollaborationRequestsView from "../components/CollaborationRequestsView";
 import TeamsView from "../components/TeamsView";
 import {
   Loader2, FolderOpen, Search, Plus, Sparkles,
-  SlidersHorizontal, Home, Bell, Handshake,
+  SlidersHorizontal, Home, Handshake,
   Hash, Users, Flame,
 } from "lucide-react";
 
