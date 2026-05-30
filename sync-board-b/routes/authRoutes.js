@@ -7,11 +7,11 @@ router.post("/signup", async (req, res) => {
   try {
     let { username, email, password } = req.body;
 
-    let isUser = await User.findOne({ email });
-    if (isUser) return res.json({ message: "User is already exits" });
-
     if (!username || !email || !password)
-      return res.json({ message: "Please enter all the fields" });
+      return res.status(400).json({ error: "Please enter all the fields" });
+
+    let isUser = await User.findOne({ email });
+    if (isUser) return res.status(409).json({ error: "User already exists" });
 
     let hashedPassword = await bcrypt.hash(password, 10);
 
@@ -24,10 +24,11 @@ router.post("/signup", async (req, res) => {
     let token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
     });
-    res.json({ message: "User regiestered successfully", token, user });
-    console.log(user);
+
+    const { password: _, ...userWithoutPassword } = user.toObject();
+    res.status(201).json({ message: "User registered successfully", token, user: userWithoutPassword });
   } catch (err) {
-    res.json({ message: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -36,20 +37,22 @@ router.post("/login", async (req, res) => {
     let { email, password } = req.body;
 
     if (!email || !password)
-      return res.json({ message: "Please check your email and password " });
+      return res.status(400).json({ error: "Please check your email and password" });
 
     let user = await User.findOne({ email });
-    if (!user) return res.json({ message: "User is not registered here" });
+    if (!user) return res.status(401).json({ error: "User is not registered here" });
 
     let isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.json({ message: "Invalid password" });
+    if (!isMatch) return res.status(401).json({ error: "Invalid password" });
 
     let token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
     });
-    res.json({ message: "User logged in successfully", token, user });
+
+    const { password: _, ...userWithoutPassword } = user.toObject();
+    res.json({ message: "User logged in successfully", token, user: userWithoutPassword });
   } catch (err) {
-    res.json({ message: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 

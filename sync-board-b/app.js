@@ -35,13 +35,17 @@ app.use("/api/v1", apiRoutes);
 
 app.use(errorHandler);
 
-mongoose
-  .connect(process.env.MONGO_URL)
-  .then(() => {
-    console.log("MongoDB is connected successfully :)");
-  })
-  .catch((err) => console.log(err));
+if (process.env.NODE_ENV !== "test") {
+  mongoose
+    .connect(process.env.MONGO_URL)
+    .then(() => {
+      console.log("MongoDB is connected successfully :)");
+    })
+    .catch((err) => console.log(err));
 
-app.listen(process.env.PORT, () => {
-  console.log(`Server is running or port ${process.env.PORT}`);
-});
+  app.listen(process.env.PORT, () => {
+    console.log(`Server is running or port ${process.env.PORT}`);
+  });
+}
+
+module.exports = app;

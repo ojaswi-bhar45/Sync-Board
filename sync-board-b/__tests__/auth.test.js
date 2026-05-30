@@ -3,21 +3,23 @@ const mongoose = require("mongoose");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 const app = require("../app");
 
+process.env.NODE_ENV = "test";
+
 let mongoServer;
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   await mongoose.connect(mongoServer.getUri());
-});
+}, 600000);
 
 afterAll(async () => {
   await mongoose.disconnect();
   await mongoServer.stop();
-});
+}, 30000);
 
 beforeEach(async () => {
   await mongoose.connection.db.dropDatabase();
-});
+}, 10000);
 
 describe("POST /api/v1/auth/signup", () => {
   it("creates a user with valid data", async () => {
