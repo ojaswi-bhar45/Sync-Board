@@ -9,7 +9,7 @@ import {
 import {
   Loader2, Plus, X, Sparkles, Heart, MessageCircle, Share2,
   MoreVertical, Edit3, Trash2, Pin, PinOff, Clock, FolderOpen,
-  Lightbulb, CheckCircle, Target, Zap, Users, ArrowUpRight, Rss,
+  Lightbulb, CheckCircle, Target, Zap, Users, ArrowUpRight, Radio,
 } from "lucide-react";
 
 function formatTimeAgo(dateString) {
@@ -547,7 +547,7 @@ export default function MyFeed() {
         </div>
         <div className="my-feed-header-right">
           {/* <div className="my-feed-filter-chip active">
-            <Rss size={14} />
+            <Radio size={14} />
             <span>Only My Posts</span>
           </div> */}
         </div>
