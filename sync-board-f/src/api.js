@@ -123,6 +123,28 @@ export function editDashboardProject(token, id, body) {
   }).then(handleResponse)
 }
 
+export function deleteProject(token, id) {
+  return fetch(`${BASE}/api/v1/projects/delete/${id}`, {
+    method: 'DELETE',
+    headers: headers(token),
+  }).then(handleResponse)
+}
+
+export function pinProject(token, id) {
+  return fetch(`${BASE}/api/v1/projects/pin/${id}`, {
+    method: 'PATCH',
+    headers: headers(token),
+  }).then(handleResponse)
+}
+
+export function updateProjectProgress(token, id, progress) {
+  return fetch(`${BASE}/api/v1/projects/progress/${id}`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify({ progress }),
+  }).then(handleResponse)
+}
+
 // ── Chat ──
 export function getMessages(token, projectId) {
   return fetch(`${BASE}/api/v1/chat/${projectId}`, {
@@ -200,6 +222,9 @@ export const api = {
     get: getMyProjects,
     createDashboard: createDashboardProject,
     edit: editDashboardProject,
+    delete: deleteProject,
+    pin: pinProject,
+    progress: updateProjectProgress,
   },
   chat: { getMessages, sendMessage },
   canvas: {

@@ -91,6 +91,20 @@ const projectSchema = new mongoose.Schema({
     default: "public",
   },
 
+  progress: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100,
+  },
+  pinned: {
+    type: Boolean,
+    default: false,
+  },
+  image: {
+    type: String,
+    default: "",
+  },
   timestamp: {
     type: Date,
     default: Date.now,

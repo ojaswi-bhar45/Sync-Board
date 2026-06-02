@@ -4,6 +4,7 @@ import {
   Users,
   Moon,
   Sun,
+  Rss,
   Grid3x3,
   PlusSquare,
   LogOut,
@@ -52,6 +53,13 @@ export default function Sidebar({
           >
             <Grid3x3 size={20} />
             <span>Feed</span>
+          </button>
+          <button
+            className={`nav-item ${isActive('my-feed') ? 'active' : ''}`}
+            onClick={() => nav('/dashboard/my-feed')}
+          >
+            <Rss size={20} />
+            <span>My Feed</span>
           </button>
           <button
             className={`nav-item ${isActive('create') ? 'active' : ''}`}
