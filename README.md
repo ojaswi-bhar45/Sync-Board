@@ -54,14 +54,16 @@ No more cold DMs. No more abandoned side projects. Just a board to sync on.
 - **Global chat toggle** — open from any dashboard view via `ChatContext`
 
 ###  Dashboard & Projects
+- **My Feed** — personal project feed with create, edit, pin, delete, and progress tracking
 - **My Projects** — glassmorphism grid with filter tabs (All / Owned / Member), search, and stats
 - **Project CRUD** — create, edit, and manage your own projects
 - **Profile management** — editable contact info, LinkedIn, GitHub links with completeness tracker
 
-###  Whiteboard (Alpha)
+###  Whiteboard
 - **Draggable canvas** — move elements freely with Pointer Events
-- **Sticky notes** — editable text, custom positioning
-- **Idea cards** — badges, progress bars, draggable layout
+- **Sticky notes** — editable text, custom positioning (persisted to MongoDB)
+- **Idea cards** — badges, progress bars, draggable layout (persisted to MongoDB)
+- **Zoom controls** — zoom in/out/reset canvas view
 
 ###  UX / Polish
 - **Dark theme default** — CSS custom properties with light/dark toggle (`useTheme` hook)
@@ -253,11 +255,11 @@ sync-board/
 │   │   ├── main.jsx                 # BrowserRouter + dark theme default
 │   │   ├── App.jsx                  # Route definitions (Login, Signup, Dashboard routes)
 │   │   ├── api.js                   # API client — every endpoint as a named export
-│   │   ├── pages/                   # Login, Signup, Feed, CreateProject
-│   │   ├── components/              # ProjectCard, ChatPanel, Workspace, Profile + Whiteboard/
+│   │   ├── pages/                   # Login, Signup, Feed, MyFeed, CreateProject
+│   │   ├── components/              # ProjectCard, ChatPanel, Workspace, Profile, MyFeed + Whiteboard/
 │   │   ├── context/                 # AuthContext (JWT state) + ChatContext (global chat)
 │   │   ├── hooks/                   # useTheme, useDraggable
-│   │   └── index.css                # ~4000 lines, CSS custom properties, glassmorphism
+│   │   └── index.css                # ~4700 lines, CSS custom properties, glassmorphism
 │   ├── .env
 │   ├── vite.config.js               # Proxy /api → :5000 in dev
 │   └── vercel.json                  # SPA rewrites + API proxy for production
@@ -279,14 +281,11 @@ All API routes are mounted under a single `/api/v1` prefix via `routes/index.js`
 
 | Severity | Issue |
 |----------|-------|
-|  Critical | Password hash exposed in signup/login API responses |
-|  Critical | All endpoints return HTTP 200 regardless of success/failure |
-|  High | Error messages leak internal details (MongoDB errors, stack traces) |
-|  High | `useTheme` hook references undeclared variable (`root`) — will throw at runtime |
-|  Medium | No input validation (email format, password strength) |
+|  High | Some catch blocks still expose raw error messages (MongoDB errors, stack traces) |
+|  Medium | No input validation library (email format, password strength) |
 |  Medium | No rate limiting on auth endpoints — brute force possible |
 |  Medium | No MongoDB connection retry — server starts even if DB is unreachable |
-|  Low | Dead code: empty `authRoutes.js`, unused `cookie-parser` dependency |
+|  Low | Self-request allowed — owner can send join request to own project |
 
 See [ARCHITECTURE.md — Known Issues](./ARCHITECTURE.md#7-known-issues--security-gaps) for the full list.
 
@@ -296,22 +295,19 @@ See [ARCHITECTURE.md — Known Issues](./ARCHITECTURE.md#7-known-issues--securit
 
 ### Short-term
 
-- Strip password from API responses via Mongoose `toJSON` transform
-- Return proper HTTP status codes (400, 401, 404, 500) across all endpoints
-- Fix `useTheme` ReferenceError
-- Add input validation (email regex, password strength, trimming)
+- Add input validation library (email regex, password strength, trimming)
+- Sanitize error messages in remaining catch blocks that expose raw errors
+- Add MongoDB connection retry logic
 
 ### Medium-term
 
-- `ProtectedRoute` wrapper at the router level (not component-level token checks)
 - Rate limiting on `/auth/*` with `express-rate-limit`
 - Consistent error response format `{ error: string, code: string }`
 - Prevent self-requests on join requests
+- Real-time chat via WebSocket (Socket.IO)
 
 ### Long-term
 
-- Real-time collaboration via WebSocket (Socket.IO)
-- Whiteboard persistence — save/load canvas elements from MongoDB
 - File/image upload for projects and comments
 - Team management with roles, permissions, and invites
 - Responsive mobile layout for feed and workspace views

@@ -213,11 +213,12 @@ Two route files mounted on `/projects` — Express routes are evaluated in order
 |--------|--------|
 | **Auth** | No |
 | **Request body** | `{ username, email, password }` |
-| **Validation** | Checks all fields present (after DB lookup — order bug) |
-| **Duplicate check** | `User.findOne({ email })` — returns "Email already exists" if found |
+| **Validation** | Checks all fields present (before DB lookup) |
+| **Duplicate check** | `User.findOne({ email })` — returns "User already exists" with 409 |
+| **Token** | `jwt.sign({ userId }, JWT_SECRET, { expiresIn: "1d" })` |
 | **Password hashing** | `bcrypt.hash(password, 10)` |
-| **Success** | `{ message, user }` — includes password hash (security issue) |
-| **Error** | `{ message }` — leaks internal error messages |
+| **Success** | `{ message, token, user }` — password excluded via destructuring |
+| **Error** | `{ error }` |
 
 #### POST /api/v1/auth/login
 
@@ -229,8 +230,8 @@ Two route files mounted on `/projects` — Express routes are evaluated in order
 | **User lookup** | `User.findOne({ email })` |
 | **Password verify** | `bcrypt.compare(password, user.password)` |
 | **Token** | `jwt.sign({ userId }, JWT_SECRET, { expiresIn: "1d" })` |
-| **Success** | `{ message, token, user }` — includes password hash |
-| **Error** | `{ message }` |
+| **Success** | `{ message, token, user }` — password excluded via destructuring |
+| **Error** | `{ error }` |
 
 #### GET /api/v1/projects/feed
 
@@ -432,6 +433,9 @@ Reads Authorization header → extracts Bearer token → jwt.verify() → User.f
   }],
   status:      { enum: ["open", "in_progress", "closed"], default: "open" },
   visibility:  { enum: ["public", "private"], default: "public" },
+  progress:    { type: Number, default: 0, min: 0, max: 100 },
+  pinned:      { type: Boolean, default: false },
+  image:       { type: String, default: "" },
   timestamp:   { type: Date, default: Date.now }
 }
 ```
@@ -452,16 +456,18 @@ Reads Authorization header → extracts Bearer token → jwt.verify() → User.f
 ```javascript
 {
   projectId: { type: ObjectId, ref: "Project", required: true },
-  type:      { type: String, enum: ["stickyNote", "ideaCard", "shape"], required: true },
+  type:      { type: String, enum: ["sticky", "idea"], default: "sticky" },
+  color:     { type: String, default: "yellow" },
+  top:       { type: Number, default: 100 },
+  left:      { type: Number, default: 100 },
+  rotation:  { type: Number, default: 0 },
+  title:     { type: String, default: "" },
   content:   { type: String, default: "" },
-  position:  {
-    x: { type: Number, default: 0 },
-    y: { type: Number, default: 0 }
-  },
-  style:     { type: Object, default: {} },
-  createdBy: { type: ObjectId, ref: "User" },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  badge:     { type: String, default: "" },
+  desc:      { type: String, default: "" },
+  progress:  { type: Number, default: 0 },
+  createdBy: { type: ObjectId, ref: "User", required: true },
+  createdAt: { type: Date, default: Date.now }
 }
 ```
 
@@ -502,6 +508,7 @@ document.documentElement.setAttribute('data-theme', 'dark')
 | `/signup` | `Signup` | Registration form |
 | `/dashboard` | `HomeLayout` → `Outlet` | Dashboard shell |
 | `/dashboard/feed` | `Feed` | 3-column feed page |
+| `/dashboard/my-feed` | `MyFeed` | Personal project feed with CRUD |
 | `/dashboard/create` | `CreateProject` | Create new project |
 | `/dashboard/profile` | `Profile` | Edit profile |
 | `/dashboard/projects` | `ProjectsList` | My projects grid |
@@ -524,14 +531,15 @@ document.documentElement.setAttribute('data-theme', 'dark')
     <Route path="/" element={<Login />} />
     <Route path="/signup" element={<Signup />} />
     <Route path="/dashboard" element={<ProtectedRoute><HomeLayout /></ProtectedRoute>}>
-      <Route index element={<Feed />} />
+      <Route index element={<Navigate to="feed" replace />} />
       <Route path="feed" element={<Feed />} />
+      <Route path="my-feed" element={<MyFeed />} />
       <Route path="create" element={<CreateProject />} />
       <Route path="profile" element={<Profile />} />
       <Route path="projects" element={<ProjectsList />} />
       <Route path="workspace/:projectId" element={<Workspace />} />
     </Route>
-    <Route path="*" element={<Navigate to="/dashboard/feed" />} />
+    <Route path="*" element={<Navigate to="/" replace />} />
   </Routes>
 </BrowserRouter>
 
@@ -624,7 +632,7 @@ document.documentElement.setAttribute('data-theme', 'dark')
 #### `useTheme`
 - Reads from `localStorage` (defaults to `"dark"`).
 - Sets `data-theme` on `<html>`.
-- **Known bug**: references undeclared variable `root` — throws `ReferenceError`.
+- Persisted to `localStorage` (defaults to `"dark"`).
 
 #### `useDraggable`
 - Pointer Events API (`pointerdown`, `pointermove`, `pointerup`).
@@ -634,7 +642,7 @@ document.documentElement.setAttribute('data-theme', 'dark')
 
 ### 5.9 Styling Architecture
 
-All styles live in a single file: **`src/index.css`** (~4000 lines).
+All styles live in a single file: **`src/index.css`** (~4700 lines).
 
 #### Theming via CSS Custom Properties
 
@@ -836,24 +844,23 @@ User sends message
 
 ### 7.3 Current Security Gaps
 
-| Gap | Impact | Priority |
-|-----|--------|----------|
-| Password hash in API responses | Anyone with network access can see hashed passwords | **P0 — Critical** |
-| HTTP 200 for all responses | Clients cannot differentiate error types programmatically | **P0 — Critical** |
-| Error messages leak internals | MongoDB errors, stack traces exposed to client | **P1 — High** |
-| No input sanitization | XSS, NoSQL injection possible | **P1 — High** |
-| No rate limiting | Brute force / credential stuffing on login | **P1 — High** |
-| CORS wide open (was) | Now restricted to `CORS_ORIGIN` env var | **P2 — Fixed** |
-| No route guards (was) | Now has `<ProtectedRoute>` wrapper | **P2 — Fixed** |
-| Self-request allowed | Owner can send join request to own project | **P3 — Low** |
+| Gap | Impact | Priority | Status |
+|-----|--------|----------|--------|
+| Password hash in API responses | Anyone with network access can see hashed passwords | **P0 — Critical** | Fixed — stripped via destructuring in auth routes |
+| HTTP 200 for all responses | Clients cannot differentiate error types programmatically | **P0 — Critical** | Fixed — proper status codes (400/401/403/404/409/500/201) |
+| Error messages leak internals | MongoDB errors, stack traces exposed to client | **P1 — High** | Open — some routes still expose raw error messages |
+| No input sanitization | XSS, NoSQL injection possible | **P1 — High** | Open |
+| No rate limiting | Brute force / credential stuffing on login | **P1 — High** | Open |
+| CORS wide open (was) | Now restricted to `CORS_ORIGIN` env var | **P2 — Fixed** | Fixed |
+| No route guards (was) | Now has `<ProtectedRoute>` wrapper | **P2 — Fixed** | Fixed |
+| Self-request allowed | Owner can send join request to own project | **P3 — Low** | Open |
 
-### 7.4 Planned Security Improvements
+### 7.4 Remaining Security Improvements
 
-1. **Strip password from all responses** — add Mongoose `toJSON` transform on User schema that deletes `password` before serialization.
-2. **Return proper HTTP status codes** — 400 for validation, 401 for auth, 403 for forbidden, 404 for not found, 500 for server errors.
-3. **Sanitize error messages** — log full error server-side, return generic `"Internal server error"` in production (`NODE_ENV !== 'development'`).
-4. **Input validation library** — add `express-validator` or `joi` for schema-level request validation (email format, password strength).
-5. **Rate limiting** — `express-rate-limit` on `/auth/*` routes: max 10 requests per 15 minutes per IP.
+1. **Sanitize error messages** — log full error server-side, return generic `"Internal server error"` in production (`NODE_ENV !== 'development'`).
+2. **Input validation library** — add `express-validator` or `joi` for schema-level request validation (email format, password strength).
+3. **Rate limiting** — `express-rate-limit` on `/auth/*` routes: max 10 requests per 15 minutes per IP.
+4. **Prevent self-requests** — block project owners from sending join requests to their own project.
 
 ---
 
@@ -906,12 +913,7 @@ canvasElementSchema.index({ projectId: 1 });
 
 ### 9.1 Current State
 
-All endpoints currently return HTTP 200 for every response, including errors. The response body contains a `message` field that may leak internal error details:
-
-```javascript
-// Current (problematic)
-res.status(200).json({ message: err.message });  // exposes MongoDB errors
-```
+Most endpoints now return proper HTTP status codes (400, 401, 403, 404, 409, 500, 201). However, some catch blocks still expose raw `error.message` to the client instead of sanitized messages. The `errorHandler` middleware catches unhandled errors and sanitizes them in production.
 
 ### 9.2 Target Error Response Format
 
@@ -928,65 +930,39 @@ res.status(200).json({ message: err.message });  // exposes MongoDB errors
 
 ### 9.3 HTTP Status Code Mapping
 
-| Condition | Current Status | Target Status |
-|-----------|---------------|---------------|
-| Successful request | 200 | 200 |
-| Resource created | 200 | 201 |
-| Validation error (missing fields) | 200 | 400 |
-| Duplicate email | 200 | 409 |
-| Invalid credentials | 200 | 401 |
-| Missing/invalid token | 200 | 401 |
-| Not found | 200 | 404 |
-| Forbidden (not owner) | 200 | 403 |
-| Self-request denied | 200 | 400 |
-| Rate limited | 200 | 429 |
-| Server error | 200 | 500 |
+| Condition | Status | Notes |
+|-----------|--------|-------|
+| Successful request | 200 | |
+| Resource created | 201 | |
+| Validation error (missing fields) | 400 | |
+| Duplicate email | 409 | |
+| Invalid credentials | 401 | |
+| Missing/invalid token | 401 | |
+| Not found | 404 | |
+| Forbidden (not owner) | 403 | |
+| Self-request denied | 400 | |
+| Rate limited | 429 | Not yet implemented |
+| Server error | 500 | |
 
 ### 9.4 Global Error Handler (`middlewares/errorHandler.js`)
 
 ```javascript
-function errorHandler(err, req, res, next) {
-  console.error(`[${new Date().toISOString()}] ${err.stack || err.message}`);
-
-  const statusCode = err.statusCode || 500;
-  const response = {
-    error: statusCode >= 500
-      ? "Internal server error"
-      : err.message || "An error occurred",
-    code: errorCodeMap[statusCode] || "UNKNOWN_ERROR",
-  };
-
-  if (process.env.NODE_ENV === "development") {
-    response.stack = err.stack;
-  }
-
-  res.status(statusCode).json(response);
-}
-
-const errorCodeMap = {
-  400: "VALIDATION_ERROR",
-  401: "UNAUTHORIZED",
-  403: "FORBIDDEN",
-  404: "NOT_FOUND",
-  429: "RATE_LIMITED",
-  500: "INTERNAL_ERROR",
+module.exports = (err, req, res, _next) => {
+  console.error(err);
+  res.status(err.status || 500).json({
+    error:
+      process.env.NODE_ENV === "production"
+        ? "Internal server error"
+        : err.message,
+  });
 };
 ```
 
-### 9.5 Implementation Plan
+### 9.5 Remaining Improvements
 
-1. Replace all `res.status(200).json({ message: "..." })` with `res.status(code).json(...)`.
-2. Create a small `AppError` class for known error types:
-   ```javascript
-   class AppError extends Error {
-     constructor(message, statusCode = 400) {
-       super(message);
-       this.statusCode = statusCode;
-     }
-   }
-   ```
-3. Use `next(new AppError("Email already exists", 409))` in catch blocks.
-4. Ensure `errorHandler.js` is the last middleware in the chain.
+1. **Sanitize catch blocks** — replace `res.status(500).json({ message: error.message })` with `next(error)` or sanitized messages in remaining raw-exposing routes.
+2. **Standard error code format** — add an `errorCodeMap` to the global error handler for machine-readable error codes.
+3. **Add request logging** — integrate `morgan` for structured HTTP request logging.
 
 ---
 
