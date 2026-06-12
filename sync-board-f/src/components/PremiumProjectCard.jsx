@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Heart, Handshake, Bookmark, Eye, ArrowUpRight, Clock,
-  MoreHorizontal, MessageCircle, Edit3, Trash2, Pin, PinOff,
+  MoreHorizontal, MessageCircle,
 } from "lucide-react";
 import CommentSection from "./CommentSection";
 
