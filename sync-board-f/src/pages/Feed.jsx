@@ -2,7 +2,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import ProjectCard from "../components/ProjectCard";
+import PremiumProjectCard from "../components/PremiumProjectCard";
+import TrendingCarousel from "../components/TrendingCarousel";
+import FeedRightPanel from "../components/FeedRightPanel";
 import RequestModal from "../components/RequestModal";
 import { toast } from "../components/Toast";
 import {
@@ -15,8 +17,7 @@ import CollaborationRequestsView from "../components/CollaborationRequestsView";
 import TeamsView from "../components/TeamsView";
 import {
   Loader2, FolderOpen, Search, Plus, Sparkles,
-  SlidersHorizontal, Home, Handshake,
-  Hash, Users, Flame,
+  SlidersHorizontal, Home, Handshake, Users,
 } from "lucide-react";
 
 const PAGE_LIMIT = 12;
@@ -27,27 +28,21 @@ const FILTERS = [
   { key: "all", label: "All" },
   { key: "trending", label: "Trending" },
   { key: "recent", label: "Recent" },
+  { key: "design", label: "Design" },
+  { key: "mobile", label: "Mobile" },
   { key: "ai", label: "AI" },
   { key: "webdev", label: "Web Dev" },
   { key: "opensource", label: "Open Source" },
 ];
 
-const TRENDING_TAGS = [
-  { tag: "react", count: 342 },
-  { tag: "javascript", count: 285 },
-  { tag: "nodejs", count: 198 },
-  { tag: "python", count: 156 },
-  { tag: "nextjs", count: 134 },
-  { tag: "typescript", count: 112 },
-  { tag: "tailwind", count: 89 },
-  { tag: "mongodb", count: 76 },
-];
-
 function filterParams(activeFilter) {
   const params = {};
   if (activeFilter === "trending") params.sort = "trending";
+  else if (activeFilter === "design") { params.tag = "design"; params.sort = "recent"; }
+  else if (activeFilter === "mobile") { params.tag = "mobile"; params.sort = "recent"; }
   else if (activeFilter === "ai") { params.tag = "ai"; params.sort = "recent"; }
   else if (activeFilter === "webdev") { params.tag = "webdev"; params.sort = "recent"; }
+  else if (activeFilter === "opensource") { params.tag = "opensource"; params.sort = "recent"; }
   else params.sort = "recent";
   return params;
 }
@@ -57,7 +52,6 @@ function FeedLeftNav({ user, activeView, onFeedNav }) {
   const links = [
     { icon: Home, view: "feed", label: "Home" },
     { icon: Users, view: "teams", label: "My Teams" },
-    // { icon: Bell, view: "notifications", label: "Notifications" },
     { icon: Handshake, view: "collaboration", label: "Collaboration" },
   ];
 
@@ -98,29 +92,6 @@ function FeedLeftNav({ user, activeView, onFeedNav }) {
         </button>
       </div>
     </nav>
-  );
-}
-
-function FeedRightPanel() {
-  return (
-    <aside className="feed-right-panel">
-      <div className="widget-card">
-        <div className="widget-header">
-          <Flame size={16} className="text-orange-400" />
-          <span className="widget-title">Trending Tags</span>
-        </div>
-        <div className="widget-divider" />
-        <div className="widget-tags">
-          {TRENDING_TAGS.map(({ tag, count }) => (
-            <button key={tag} className="trending-tag">
-              <Hash size={12} className="trending-tag-hash" />
-              <span className="trending-tag-name">{tag}</span>
-              <span className="trending-tag-count">{count}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </aside>
   );
 }
 
@@ -229,7 +200,6 @@ export default function Feed() {
 
   useEffect(() => {
     const onKeyDown = (e) => {
-      // Press "/" to focus search (unless typing in an input)
       if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         const t = e.target;
         const tag = (t && t.tagName ? t.tagName.toLowerCase() : '');
@@ -240,7 +210,6 @@ export default function Feed() {
         }
       }
 
-      // Esc clears search
       if (e.key === 'Escape') {
         if (document.activeElement && document.activeElement === document.querySelector('.feed-search input')) {
           e.preventDefault();
@@ -487,25 +456,12 @@ export default function Feed() {
               </div>
 
               {showTrending && (
-                <div className="feed-trending-section">
-                  <div className="feed-trending-header">
-                    <Flame size={16} className="text-orange-400" />
-                    <span className="feed-trending-title">Trending</span>
-                    <span className="feed-trending-subtitle">Popular projects right now</span>
-                  </div>
-                  <div className="trending-scroll">
-                    {trendingProjects.map((p) => (
-                      <ProjectCard
-                        key={p._id}
-                        project={p}
-                        compact
-                        isLiked={likedIds.has(p._id)}
-                        onLike={handleLike}
-                        onRequest={(project) => setReqModal({ open: true, project })}
-                      />
-                    ))}
-                  </div>
-                </div>
+                <TrendingCarousel
+                  projects={trendingProjects}
+                  onLike={handleLike}
+                  onRequest={(project) => setReqModal({ open: true, project })}
+                  likedIds={likedIds}
+                />
               )}
 
               {loading ? (
@@ -541,7 +497,7 @@ export default function Feed() {
                         className="feed-card-wrapper"
                         style={{ animationDelay: `${Math.min(index % PAGE_LIMIT, 6) * 40}ms` }}
                       >
-                        <ProjectCard
+                        <PremiumProjectCard
                           project={project}
                           isLiked={likedIds.has(project._id)}
                           isSaved={savedIds.has(project._id)}
@@ -552,7 +508,6 @@ export default function Feed() {
                           onViewProject={handleViewProject}
                           likeLoading={likeLoading === project._id}
                           commentLoading={commentLoading === project._id}
-                          showThumbnail={index % 3 === 1}
                         />
                       </div>
                     ))}
@@ -576,7 +531,7 @@ export default function Feed() {
           )}
         </div>
 
-        <FeedRightPanel />
+        {feedView === "feed" && <FeedRightPanel />}
       </div>
 
       <RequestModal

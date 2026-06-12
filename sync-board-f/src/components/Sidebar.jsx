@@ -1,14 +1,20 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from "react-router-dom";
 import {
+  Grid3x3,
+  Rss,
+  PlusSquare,
   FolderKanban,
   Users,
+  Handshake,
+  MessageSquare,
+  Bell,
+  User,
+  Settings,
+  LogOut,
+  Shield,
+  Zap,
   Moon,
   Sun,
-  Rss,
-  Grid3x3,
-  PlusSquare,
-  LogOut,
-  Handshake,
 } from "lucide-react";
 import Logo from "./Logo";
 
@@ -22,15 +28,35 @@ export default function Sidebar({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const currentPath = location.pathname.replace('/dashboard/', '');
+  const currentPath = location.pathname.replace("/dashboard/", "");
   const searchParams = new URLSearchParams(location.search);
-  const activeSubView = searchParams.get('view');
+  const activeSubView = searchParams.get("view");
 
-  const isActive = (path) => currentPath === path || currentPath.startsWith(path + '/');
+  const isActive = (path) =>
+    currentPath === path || currentPath.startsWith(path + "/");
 
   const nav = (path) => {
     onMobileClose();
     navigate(path);
+  };
+
+  const NAV_ITEMS = [
+    { path: "feed", icon: Grid3x3, label: "Feed" },
+    { path: "my-feed", icon: Rss, label: "My Feed" },
+    { path: "messages", icon: MessageSquare, label: "Messages", badge: 3 },
+    { path: "notifications", icon: Bell, label: "Notifications", badge: 7 },
+    { path: "create", icon: PlusSquare, label: "Create Project" },
+    { path: "projects", icon: FolderKanban, label: "Projects" },
+  ];
+
+  const BOTTOM_ITEMS = [
+    { path: "feed?view=teams", icon: Users, label: "My Team", checkView: "teams" },
+    { path: "feed?view=collaboration", icon: Handshake, label: "Collaboration", checkView: "collaboration" },
+  ];
+
+  const isNavActive = (item) => {
+    if (item.checkView) return activeSubView === item.checkView;
+    return isActive(item.path);
   };
 
   return (
@@ -46,84 +72,124 @@ export default function Sidebar({
           <span>SyncBoard</span>
         </div>
 
-        <nav className="sidebar-nav">
-          <button
-            className={`nav-item ${isActive('feed') ? 'active' : ''}`}
-            onClick={() => nav('/dashboard/feed')}
-          >
-            <Grid3x3 size={20} />
-            <span>Feed</span>
-          </button>
-          <button
-            className={`nav-item ${isActive('my-feed') ? 'active' : ''}`}
-            onClick={() => nav('/dashboard/my-feed')}
-          >
-            <Rss size={20} />
-            <span>My Feed</span>
-          </button>
-          <button
-            className={`nav-item ${isActive('create') ? 'active' : ''}`}
-            onClick={() => nav('/dashboard/create')}
-          >
-            <PlusSquare size={20} />
-            <span>Create Project</span>
-          </button>
-          <button
-            className={`nav-item ${isActive('projects') ? 'active' : ''}`}
-            onClick={() => nav('/dashboard/projects')}
-          >
-            <FolderKanban size={20} />
-            <span>Projects</span>
-          </button>
-          <button
-            className={`nav-item ${activeSubView === 'teams' ? 'active' : ''}`}
-            onClick={() => nav('/dashboard/feed?view=teams')}
-          >
-            <Users size={20} />
-            <span>My Team</span>
-          </button>
-          <button
-            className={`nav-item ${activeSubView === 'collaboration' ? 'active' : ''}`}
-            onClick={() => nav('/dashboard/feed?view=collaboration')}
-          >
-            <Handshake size={20} />
-            <span>Collaboration</span>
-          </button>
-        </nav>
+        <div className="sidebar-nav-wrapper">
+          <nav className="sidebar-nav">
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const active = isNavActive(item);
+              return (
+                <button
+                  key={item.path}
+                  className={`nav-item ${active ? "active glow-active" : ""}`}
+                  onClick={() => nav(`/dashboard/${item.path}`)}
+                >
+                  <span className="nav-item-icon-wrap">
+                    <Icon size={20} />
+                    {item.badge && (
+                      <span className="nav-badge">{item.badge > 99 ? "99+" : item.badge}</span>
+                    )}
+                  </span>
+                  <span className="nav-item-label">{item.label}</span>
+                  {active && <div className="nav-item-glow" />}
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="sidebar-divider" />
+
+          <nav className="sidebar-nav sidebar-nav-bottom">
+            {BOTTOM_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const active = isNavActive(item);
+              return (
+                <button
+                  key={item.path}
+                  className={`nav-item ${active ? "active glow-active" : ""}`}
+                  onClick={() => nav(`/dashboard/${item.path}`)}
+                >
+                  <Icon size={20} />
+                  <span className="nav-item-label">{item.label}</span>
+                  {active && <div className="nav-item-glow" />}
+                </button>
+              );
+            })}
+            <button
+              className={`nav-item ${isActive("settings") ? "active" : ""}`}
+              onClick={() => nav("/dashboard/settings")}
+            >
+              <Settings size={20} />
+              <span className="nav-item-label">Settings</span>
+            </button>
+          </nav>
+        </div>
+
+        <div className="sidebar-pro-card">
+          <div className="sidebar-pro-bg" />
+          <div className="sidebar-pro-content">
+            <Shield size={20} className="sidebar-pro-icon" />
+            <div className="sidebar-pro-text">
+              <span className="sidebar-pro-title">Upgrade to Pro</span>
+              <span className="sidebar-pro-desc">Unlock unlimited projects</span>
+            </div>
+            <button className="sidebar-pro-btn">
+              <Zap size={14} />
+              <span>Pro</span>
+            </button>
+          </div>
+        </div>
 
         <div className="sidebar-footer">
-          <button
-            className="theme-toggle-btn"
-            onClick={toggleTheme}
-            title={
-              theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
-            }
+          <div
+            className="sidebar-user-card"
+            onClick={() => nav("/dashboard/profile")}
           >
-            {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-          <button
-            className="profile-mini"
-            onClick={() => nav('/dashboard/profile')}
-          >
-            <div className="avatar">
+            <div className="avatar sidebar-user-avatar">
               <img
-                src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.username || "U"}`}
+                src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.username || "U"}&backgroundColor=6366f1&textColor=ffffff`}
                 alt="User"
               />
-              <div className="status-indicator online"></div>
+              <div className="status-indicator online" />
             </div>
-            <div className="profile-info">
-              <span className="profile-name">{user?.username || "User"}</span>
-              <span className="profile-role">Online</span>
+            <div className="sidebar-user-info">
+              <span className="sidebar-user-name">
+                {user?.username || "User"}
+              </span>
+              <span className="sidebar-user-plan">Free Plan</span>
             </div>
-          </button>
-          <button
-            className="theme-toggle-btn"
-            onClick={onLogout}
-            title="Logout"
-          >
-            <LogOut size={20} />
-          </button>
+            <div className="sidebar-user-actions">
+              <button
+                className="sidebar-icon-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  nav("/dashboard/profile");
+                }}
+                title="Profile"
+              >
+                <User size={16} />
+              </button>
+              <button
+                className="sidebar-icon-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleTheme();
+                }}
+                title={theme === "dark" ? "Light mode" : "Dark mode"}
+              >
+                {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+              <button
+                className="sidebar-icon-btn sidebar-icon-btn-logout"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLogout();
+                }}
+                title="Logout"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
+          </div>
         </div>
       </aside>
     </>
