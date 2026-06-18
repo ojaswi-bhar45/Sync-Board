@@ -1,6 +1,7 @@
 const Project = require("../models/Project");
 const auth = require("../middlewares/auth");
 const router = require("express").Router();
+const { validate, schemas } = require("../middlewares/validate");
 
 const TAG_FILTERS = {
   ai: [/ai/i, /machine learning/i, /llm/i, /deep learning/i, /neural/i, /gpt/i, /chatgpt/i, /tensorflow/i, /pytorch/i],
@@ -28,7 +29,7 @@ function buildSort(query) {
   return query.sort === "trending" ? { likesCount: -1, timestamp: -1 } : { timestamp: -1 };
 }
 
-router.get("/feed", async (req, res) => {
+router.get("/feed", async (req, res, next) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 12));
@@ -115,15 +116,13 @@ router.get("/feed", async (req, res) => {
       hasMore: page * limit < total,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 });
 
-router.post("/create", auth, async (req, res) => {
+router.post("/create", auth, validate(schemas.createProject), async (req, res, next) => {
   try {
     let { title, description, techStack, note } = req.body;
-    if (!title || !description)
-      return res.status(400).json({ message: "Title and description are required" });
 
     if (typeof techStack === "string") {
       techStack = techStack.split(",").map((s) => s.trim()).filter(Boolean);
@@ -140,15 +139,15 @@ router.post("/create", auth, async (req, res) => {
     const populated = await project.populate("userId", "username email");
     res.status(201).json(populated);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 });
 
-router.put("/like/:id", auth, async (req, res) => {
+router.put("/like/:id", auth, async (req, res, next) => {
   try {
     const project = await Project.findById(req.params.id);
     if (!project)
-      return res.status(404).json({ message: "Project not found" });
+      return res.status(404).json({ error: "Project not found" });
 
     const userId = req.user._id;
     const index = project.likes.indexOf(userId);
@@ -162,19 +161,17 @@ router.put("/like/:id", auth, async (req, res) => {
     await project.save();
     res.json({ likes: project.likes, likesCount: project.likes.length });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 });
 
-router.post("/comment/:id", auth, async (req, res) => {
+router.post("/comment/:id", auth, validate(schemas.comment), async (req, res, next) => {
   try {
     const { text } = req.body;
-    if (!text)
-      return res.status(400).json({ message: "Comment text is required" });
 
     const project = await Project.findById(req.params.id);
     if (!project)
-      return res.status(404).json({ message: "Project not found" });
+      return res.status(404).json({ error: "Project not found" });
 
     project.comments.push({
       user: req.user._id,
@@ -189,29 +186,32 @@ router.post("/comment/:id", auth, async (req, res) => {
 
     res.status(201).json({ comments: updated.comments });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 });
 
-router.post("/request/:id", auth, async (req, res) => {
+router.post("/request/:id", auth, validate(schemas.joinRequest), async (req, res, next) => {
   try {
     const { note } = req.body;
 
     const project = await Project.findById(req.params.id);
     if (!project)
-      return res.status(404).json({ message: "Project not found" });
+      return res.status(404).json({ error: "Project not found" });
+
+    if (project.userId.toString() === req.user._id.toString())
+      return res.status(400).json({ error: "You cannot request to join your own project" });
 
     const alreadyRequested = project.joinRequest.some(
       (r) => r.user.toString() === req.user._id.toString(),
     );
     if (alreadyRequested)
-      return res.status(400).json({ message: "Already requested to join" });
+      return res.status(400).json({ error: "Already requested to join" });
 
     const isMember = project.members.some(
       (m) => m.toString() === req.user._id.toString(),
     );
     if (isMember)
-      return res.status(400).json({ message: "You are already a member" });
+      return res.status(400).json({ error: "You are already a member" });
 
     project.joinRequest.push({
       user: req.user._id,
@@ -223,12 +223,11 @@ router.post("/request/:id", auth, async (req, res) => {
     await project.save();
     res.status(201).json({ message: "Collaboration request sent" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 });
 
-// ─── Incoming Requests (for project owner) ───
-router.get("/incoming-requests", auth, async (req, res) => {
+router.get("/incoming-requests", auth, async (req, res, next) => {
   try {
     const projects = await Project.find({
       userId: req.user._id,
@@ -255,12 +254,11 @@ router.get("/incoming-requests", auth, async (req, res) => {
 
     res.json({ incoming });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 });
 
-// ─── Outgoing Requests (user's own requests) ───
-router.get("/my-requests", auth, async (req, res) => {
+router.get("/my-requests", auth, async (req, res, next) => {
   try {
     const projects = await Project.find({
       "joinRequest.user": req.user._id,
@@ -287,27 +285,24 @@ router.get("/my-requests", auth, async (req, res) => {
 
     res.json({ outgoing });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 });
 
-// ─── Accept / Reject a join request ───
-router.put("/request/:projectId/:requestId", auth, async (req, res) => {
+router.put("/request/:projectId/:requestId", auth, validate(schemas.updateRequest), async (req, res, next) => {
   try {
     const { status } = req.body;
-    if (!["accepted", "rejected"].includes(status))
-      return res.status(400).json({ message: "Invalid status" });
 
     const project = await Project.findOne({
       _id: req.params.projectId,
       userId: req.user._id,
     });
     if (!project)
-      return res.status(404).json({ message: "Project not found" });
+      return res.status(404).json({ error: "Project not found" });
 
     const request = project.joinRequest.id(req.params.requestId);
     if (!request)
-      return res.status(404).json({ message: "Request not found" });
+      return res.status(404).json({ error: "Request not found" });
 
     request.status = status;
 
@@ -323,12 +318,11 @@ router.put("/request/:projectId/:requestId", auth, async (req, res) => {
     await project.save();
     res.json({ message: `Request ${status}` });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 });
 
-// ─── My Teams (projects where user is a member or owner) ───
-router.get("/my-teams", auth, async (req, res) => {
+router.get("/my-teams", auth, async (req, res, next) => {
   try {
     const projects = await Project.find({
       $or: [
@@ -340,33 +334,32 @@ router.get("/my-teams", auth, async (req, res) => {
 
     res.json({ teams: projects });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 });
 
-// ─── Remove member from project (owner only) ───
-router.delete("/:id/members/:userId", auth, async (req, res) => {
+router.delete("/:id/members/:userId", auth, async (req, res, next) => {
   try {
     const project = await Project.findOne({
       _id: req.params.id,
       userId: req.user._id,
     });
     if (!project)
-      return res.status(404).json({ message: "Project not found" });
+      return res.status(404).json({ error: "Project not found" });
 
     if (req.params.userId === req.user._id.toString())
-      return res.status(400).json({ message: "Cannot remove yourself as owner" });
+      return res.status(400).json({ error: "Cannot remove yourself as owner" });
 
     const idx = project.members.indexOf(req.params.userId);
     if (idx === -1)
-      return res.status(404).json({ message: "Member not found" });
+      return res.status(404).json({ error: "Member not found" });
 
     project.members.splice(idx, 1);
     await project.save();
 
     res.json({ message: "Member removed", members: project.members });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 });
 

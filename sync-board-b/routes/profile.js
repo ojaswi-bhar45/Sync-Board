@@ -1,17 +1,18 @@
 const User = require("../models/User");
 const auth = require("../middlewares/auth");
 const router = require("express").Router();
+const { validate, schemas } = require("../middlewares/validate");
 
-router.get("/", auth, async (req, res) => {
+router.get("/", auth, async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id).select("-password");
     res.json({ user });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching profile", error });
+    next(error);
   }
 });
 
-router.patch("/edit", auth, async (req, res) => {
+router.patch("/edit", auth, validate(schemas.updateProfile), async (req, res, next) => {
   let { username, contactNumber, address, linkedInProfile, githubProfile } =
     req.body;
   try {
@@ -23,12 +24,8 @@ router.patch("/edit", auth, async (req, res) => {
     let updatedProfile = await User.findById(req.user._id).select("-password");
     res.json({ message: "Profile updated successfully", user: updatedProfile });
   } catch (error) {
-    res.status(500).json({ message: "Error updating profile", error });
+    next(error);
   }
 });
 
 module.exports = router;
-
-
-
-

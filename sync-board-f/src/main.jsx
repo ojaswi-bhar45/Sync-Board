@@ -4,8 +4,10 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 
-// Default to dark theme
-document.documentElement.setAttribute('data-theme', 'dark')
+const savedTheme = (() => {
+  try { return localStorage.getItem('sb-theme') } catch { return null }
+})()
+document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -14,4 +16,3 @@ createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </StrictMode>,
 )
-

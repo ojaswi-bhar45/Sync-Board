@@ -4,6 +4,6 @@ module.exports = (err, req, res, _next) => {
     error:
       process.env.NODE_ENV === "production"
         ? "Internal server error"
-        : err.message,
+        : "Internal server error",
   });
 };

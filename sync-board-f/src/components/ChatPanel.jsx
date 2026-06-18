@@ -1,13 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageSquare, X, Send, Loader2, StickyNote } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useChat } from '../context/ChatContext';
+import { useSocket } from '../context/SocketContext';
 import { getMessages, sendMessage as sendMessageApi, getMyTeams, createCanvasElement } from '../api';
 import { toast } from './Toast';
 
 export default function ChatPanel({ projectId: propProjectId, projectName: propProjectName, isAdmin: propIsAdmin }) {
   const { token, user } = useAuth();
   const { chatOpen, chatProjectId, chatProjectName, setChatOpen, startChat } = useChat();
+  const { connected, joinProject, leaveProject, onMessage, sendTyping, sendStopTyping, onTyping, onStopTyping } = useSocket();
   const projectId = propProjectId || chatProjectId;
   const projectName = propProjectName || chatProjectName;
   const isAdmin = propIsAdmin;
@@ -17,7 +19,7 @@ export default function ChatPanel({ projectId: propProjectId, projectName: propP
   const setIsOpen = propProjectId !== undefined ? internalSetOpen : setChatOpen;
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => Boolean(projectId));
   const [sending, setSending] = useState(false);
   const [teams, setTeams] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState(projectId || null);
@@ -25,22 +27,24 @@ export default function ChatPanel({ projectId: propProjectId, projectName: propP
   const [stickyInput, setStickyInput] = useState(false);
   const [stickyText, setStickyText] = useState('');
   const [stickySaving, setStickySaving] = useState(false);
+  const [typingUsers, setTypingUsers] = useState({});
+  const typingTimeoutRef = useRef(null);
   const chatAreaRef = useRef(null);
   const inputRef = useRef(null);
+  const projectIdRef = useRef(projectId);
 
   useEffect(() => {
-    if (projectId) {
-      Promise.resolve().then(() => {
-        setSelectedProjectId(projectId);
-        setSelectedProjectName(projectName || '');
-      });
+    if (projectId && projectId !== projectIdRef.current) {
+      projectIdRef.current = projectId;
+      setSelectedProjectId(projectId);
+      setSelectedProjectName(projectName || '');
     }
   }, [projectId, projectName]);
 
   useEffect(() => {
     if (selectedProjectId) {
+      joinProject(selectedProjectId);
       let cancelled = false;
-      Promise.resolve().then(() => { if (!cancelled) setLoading(true); });
       getMessages(token, selectedProjectId).then(data => {
         if (!cancelled) setMessages(data.messages || []);
       }).catch(err => {
@@ -48,13 +52,16 @@ export default function ChatPanel({ projectId: propProjectId, projectName: propP
       }).finally(() => {
         if (!cancelled) setLoading(false);
       });
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+        leaveProject(selectedProjectId);
+      };
     } else if (isOpen) {
       getMyTeams(token).then(data => {
         setTeams(data.teams || []);
       }).catch(() => {});
     }
-  }, [selectedProjectId, isOpen, token]);
+  }, [selectedProjectId, isOpen, token, joinProject, leaveProject]);
 
   useEffect(() => {
     if (chatAreaRef.current) {
@@ -62,9 +69,48 @@ export default function ChatPanel({ projectId: propProjectId, projectName: propP
     }
   }, [messages]);
 
+  useEffect(() => {
+    return onMessage((msg) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m._id === msg._id)) return prev;
+        return [...prev, msg];
+      });
+    });
+  }, [onMessage]);
+
+  const typingHandler = useCallback(({ userId, username }) => {
+    setTypingUsers((prev) => ({ ...prev, [userId]: username }));
+    clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      setTypingUsers((prev) => {
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
+    }, 3000);
+  }, []);
+
+  const stopTypingHandler = useCallback(({ userId }) => {
+    setTypingUsers((prev) => {
+      const next = { ...prev };
+      delete next[userId];
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const unsubTyping = onTyping(typingHandler);
+    const unsubStopTyping = onStopTyping(stopTypingHandler);
+    return () => {
+      unsubTyping();
+      unsubStopTyping();
+    };
+  }, [onTyping, onStopTyping, typingHandler, stopTypingHandler]);
+
   const handleSendMessage = async () => {
     if (!inputValue.trim() || !token || !selectedProjectId) return;
     setSending(true);
+    sendStopTyping(selectedProjectId);
     try {
       const data = await sendMessageApi(token, selectedProjectId, inputValue.trim());
       setMessages((prev) => [...prev, data.message]);
@@ -81,6 +127,17 @@ export default function ChatPanel({ projectId: propProjectId, projectName: propP
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  const handleInputChange = (e) => {
+    setInputValue(e.target.value);
+    if (selectedProjectId) {
+      sendTyping(selectedProjectId);
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        sendStopTyping(selectedProjectId);
+      }, 2000);
     }
   };
 
@@ -121,6 +178,8 @@ export default function ChatPanel({ projectId: propProjectId, projectName: propP
     setIsOpen(false);
   };
 
+  const typingEntries = Object.entries(typingUsers).filter(([uid]) => uid !== user?._id);
+
   if (!isOpen) {
     return (
       <button className="chat-toggle-btn" onClick={() => setIsOpen(true)}>
@@ -139,6 +198,7 @@ export default function ChatPanel({ projectId: propProjectId, projectName: propP
           ) : (
             <span>Team Chat</span>
           )}
+          {connected && <span className="w-2 h-2 rounded-full bg-green-500 ml-2" title="Connected" />}
         </div>
         <div className="flex items-center gap-1">
           {isAdmin && selectedProjectId && (
@@ -242,6 +302,13 @@ export default function ChatPanel({ projectId: propProjectId, projectName: propP
             );
           })
         )}
+        {typingEntries.length > 0 && (
+          <div className="chat-typing">
+            <span className="typing-text">
+              {typingEntries.map(([, name]) => name).join(', ')} typing...
+            </span>
+          </div>
+        )}
       </div>
 
       {selectedProjectId && (
@@ -253,7 +320,7 @@ export default function ChatPanel({ projectId: propProjectId, projectName: propP
               className="chat-input"
               placeholder="Type a message..."
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               disabled={sending}
             />
