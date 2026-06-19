@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useChat } from "../context/ChatContext";
 import {
-  FolderKanban, Users, Clock, ArrowUpRight,
+  FolderKanban, Users, Clock,
   MessageSquare, Search, Plus, StickyNote,
 } from "lucide-react";
 import { toast } from "./Toast";
