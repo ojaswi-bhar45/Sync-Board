@@ -38,7 +38,8 @@ export function SocketProvider({ children }) {
     socketRef.current = s;
 
     return () => {
-      s.disconnect();
+      s.removeAllListeners();
+      if (s.connected) s.disconnect();
       socketRef.current = null;
       setConnected(false);
     };

@@ -3,7 +3,7 @@ const router = express.Router();
 const auth = require("../middlewares/auth");
 const Message = require("../models/Message");
 const Project = require("../models/Project");
-const { validate, schemas } = require("../middlewares/validate");
+const { validate, schemas } = require("../middlewares/joi");
 
 async function requireMember(req, res, next) {
   try {

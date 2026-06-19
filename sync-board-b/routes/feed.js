@@ -1,7 +1,7 @@
 const Project = require("../models/Project");
 const auth = require("../middlewares/auth");
 const router = require("express").Router();
-const { validate, schemas } = require("../middlewares/validate");
+const { validate, schemas } = require("../middlewares/joi");
 
 const TAG_FILTERS = {
   ai: [/ai/i, /machine learning/i, /llm/i, /deep learning/i, /neural/i, /gpt/i, /chatgpt/i, /tensorflow/i, /pytorch/i],

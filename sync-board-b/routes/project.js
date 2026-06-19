@@ -1,7 +1,7 @@
 const Project = require("../models/Project");
 const auth = require("../middlewares/auth");
 const router = require("express").Router();
-const { validate, schemas } = require("../middlewares/validate");
+const { validate, schemas } = require("../middlewares/joi");
 
 router.post("/add-projects", auth, validate(schemas.addDashboardProject), async (req, res, next) => {
   let { title, description, note } = req.body;

@@ -7,9 +7,7 @@ import {
   Users,
   Handshake,
   MessageSquare,
-  Bell,
   User,
-  Settings,
   LogOut,
   Shield,
   Zap,
@@ -44,9 +42,8 @@ export default function Sidebar({
     { path: "feed", icon: Grid3x3, label: "Feed" },
     { path: "my-feed", icon: Rss, label: "My Feed" },
     { path: "messages", icon: MessageSquare, label: "Messages", badge: 3 },
-    { path: "notifications", icon: Bell, label: "Notifications", badge: 7 },
-    { path: "create", icon: PlusSquare, label: "Create Project" },
     { path: "projects", icon: FolderKanban, label: "Projects" },
+    { path: "create", icon: PlusSquare, label: "Create Project" },
   ];
 
   const BOTTOM_ITEMS = [
@@ -114,13 +111,6 @@ export default function Sidebar({
                 </button>
               );
             })}
-            <button
-              className={`nav-item ${isActive("settings") ? "active" : ""}`}
-              onClick={() => nav("/dashboard/settings")}
-            >
-              <Settings size={20} />
-              <span className="nav-item-label">Settings</span>
-            </button>
           </nav>
         </div>
 
