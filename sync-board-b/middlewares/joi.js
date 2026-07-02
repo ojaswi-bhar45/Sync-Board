@@ -1,10 +1,11 @@
 const Joi = require("joi");
+const { error: sendError } = require("../utils/response");
 
 function validate(schema) {
   return (req, res, next) => {
     const { error, value } = schema.validate(req.body, { abortEarly: false });
     if (error) {
-      return res.status(400).json({ error: error.details.map(d => d.message).join("; ") });
+      return sendError(res, "Validation failed", "VALIDATION_ERROR", 400, error.details.map(d => d.message));
     }
     req.body = value;
     next();

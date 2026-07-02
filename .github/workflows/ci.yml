@@ -1,4 +1,4 @@
-name: CI
+name: Build and Test
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "24.15.0"
           cache: "npm"
           cache-dependency-path: sync-board-b/package-lock.json
 

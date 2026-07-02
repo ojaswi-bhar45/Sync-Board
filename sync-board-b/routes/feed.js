@@ -2,6 +2,7 @@ const Project = require("../models/Project");
 const auth = require("../middlewares/auth");
 const router = require("express").Router();
 const { validate, schemas } = require("../middlewares/joi");
+const { success, error } = require("../utils/response");
 
 const TAG_FILTERS = {
   ai: [/ai/i, /machine learning/i, /llm/i, /deep learning/i, /neural/i, /gpt/i, /chatgpt/i, /tensorflow/i, /pytorch/i],
@@ -108,7 +109,7 @@ router.get("/feed", async (req, res, next) => {
       Project.countDocuments(filter),
     ]);
 
-    res.json({
+    success(res, {
       projects,
       page,
       totalPages: Math.ceil(total / limit),
@@ -137,7 +138,7 @@ router.post("/create", auth, validate(schemas.createProject), async (req, res, n
     });
 
     const populated = await project.populate("userId", "username email");
-    res.status(201).json(populated);
+    success(res, populated, "Project created", 201);
   } catch (error) {
     next(error);
   }
@@ -147,7 +148,7 @@ router.put("/like/:id", auth, async (req, res, next) => {
   try {
     const project = await Project.findById(req.params.id);
     if (!project)
-      return res.status(404).json({ error: "Project not found" });
+      return error(res, "Project not found", "NOT_FOUND", 404);
 
     const userId = req.user._id;
     const index = project.likes.indexOf(userId);
@@ -159,7 +160,7 @@ router.put("/like/:id", auth, async (req, res, next) => {
     }
 
     await project.save();
-    res.json({ likes: project.likes, likesCount: project.likes.length });
+    success(res, { likes: project.likes, likesCount: project.likes.length });
   } catch (error) {
     next(error);
   }
@@ -171,7 +172,7 @@ router.post("/comment/:id", auth, validate(schemas.comment), async (req, res, ne
 
     const project = await Project.findById(req.params.id);
     if (!project)
-      return res.status(404).json({ error: "Project not found" });
+      return error(res, "Project not found", "NOT_FOUND", 404);
 
     project.comments.push({
       user: req.user._id,
@@ -184,7 +185,7 @@ router.post("/comment/:id", auth, validate(schemas.comment), async (req, res, ne
     const updated = await Project.findById(req.params.id)
       .populate("comments.user", "username email");
 
-    res.status(201).json({ comments: updated.comments });
+    success(res, { comments: updated.comments }, "Comment added", 201);
   } catch (error) {
     next(error);
   }
@@ -196,22 +197,22 @@ router.post("/request/:id", auth, validate(schemas.joinRequest), async (req, res
 
     const project = await Project.findById(req.params.id);
     if (!project)
-      return res.status(404).json({ error: "Project not found" });
+      return error(res, "Project not found", "NOT_FOUND", 404);
 
     if (project.userId.toString() === req.user._id.toString())
-      return res.status(400).json({ error: "You cannot request to join your own project" });
+      return error(res, "You cannot request to join your own project", "SELF_REQUEST", 400);
 
     const alreadyRequested = project.joinRequest.some(
       (r) => r.user.toString() === req.user._id.toString(),
     );
     if (alreadyRequested)
-      return res.status(400).json({ error: "Already requested to join" });
+      return error(res, "Already requested to join", "DUPLICATE_REQUEST", 400);
 
     const isMember = project.members.some(
       (m) => m.toString() === req.user._id.toString(),
     );
     if (isMember)
-      return res.status(400).json({ error: "You are already a member" });
+      return error(res, "You are already a member", "ALREADY_MEMBER", 400);
 
     project.joinRequest.push({
       user: req.user._id,
@@ -221,7 +222,7 @@ router.post("/request/:id", auth, validate(schemas.joinRequest), async (req, res
     });
 
     await project.save();
-    res.status(201).json({ message: "Collaboration request sent" });
+    success(res, null, "Collaboration request sent", 201);
   } catch (error) {
     next(error);
   }
@@ -252,7 +253,7 @@ router.get("/incoming-requests", auth, async (req, res, next) => {
       }
     }
 
-    res.json({ incoming });
+    success(res, { incoming });
   } catch (error) {
     next(error);
   }
@@ -283,7 +284,7 @@ router.get("/my-requests", auth, async (req, res, next) => {
       }
     }
 
-    res.json({ outgoing });
+    success(res, { outgoing });
   } catch (error) {
     next(error);
   }
@@ -298,11 +299,11 @@ router.put("/request/:projectId/:requestId", auth, validate(schemas.updateReques
       userId: req.user._id,
     });
     if (!project)
-      return res.status(404).json({ error: "Project not found" });
+      return error(res, "Project not found", "NOT_FOUND", 404);
 
     const request = project.joinRequest.id(req.params.requestId);
     if (!request)
-      return res.status(404).json({ error: "Request not found" });
+      return error(res, "Request not found", "NOT_FOUND", 404);
 
     request.status = status;
 
@@ -316,7 +317,7 @@ router.put("/request/:projectId/:requestId", auth, validate(schemas.updateReques
     }
 
     await project.save();
-    res.json({ message: `Request ${status}` });
+    success(res, null, `Request ${status}`);
   } catch (error) {
     next(error);
   }
@@ -332,7 +333,7 @@ router.get("/my-teams", auth, async (req, res, next) => {
     }).populate("userId", "username email")
       .populate("members", "username");
 
-    res.json({ teams: projects });
+    success(res, { teams: projects });
   } catch (error) {
     next(error);
   }
@@ -345,19 +346,19 @@ router.delete("/:id/members/:userId", auth, async (req, res, next) => {
       userId: req.user._id,
     });
     if (!project)
-      return res.status(404).json({ error: "Project not found" });
+      return error(res, "Project not found", "NOT_FOUND", 404);
 
     if (req.params.userId === req.user._id.toString())
-      return res.status(400).json({ error: "Cannot remove yourself as owner" });
+      return error(res, "Cannot remove yourself as owner", "BAD_REQUEST", 400);
 
     const idx = project.members.indexOf(req.params.userId);
     if (idx === -1)
-      return res.status(404).json({ error: "Member not found" });
+      return error(res, "Member not found", "NOT_FOUND", 404);
 
     project.members.splice(idx, 1);
     await project.save();
 
-    res.json({ message: "Member removed", members: project.members });
+    success(res, { members: project.members }, "Member removed");
   } catch (error) {
     next(error);
   }

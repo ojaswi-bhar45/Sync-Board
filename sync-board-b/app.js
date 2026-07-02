@@ -9,7 +9,9 @@ const apiRoutes = require("./routes/index");
 const errorHandler = require("./middlewares/errorHandler");
 const { createSocketServer } = require("./socket");
 
-dns.setServers(["8.8.8.8", "8.8.4.4"]);
+if (process.env.MONGO_URL?.includes("mongodb+srv")) {
+  dns.setServers(["8.8.8.8", "8.8.4.4"]);
+}
 
 require("dotenv").config();
 
@@ -32,44 +34,41 @@ app.use(
   }),
 );
 
-app.get("/", (req, res) => {
-  res.send("Working");
-});
-
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.status(200).json({ data: { status: "ok" }, message: "OK" });
+});
+
 app.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok" });
+  res.status(200).json({ data: { status: "ok" }, message: "OK" });
 });
 
 app.use("/api/v1", apiRoutes);
 
 app.use(errorHandler);
 
-async function connectWithRetry(maxRetries = 5, baseDelay = 1000) {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      await mongoose.connect(process.env.MONGO_URL);
-      console.log("MongoDB is connected successfully :)");
-      return;
-    } catch (err) {
-      const delay = baseDelay * Math.pow(2, attempt - 1);
-      console.error(`MongoDB connection attempt ${attempt}/${maxRetries} failed. Retrying in ${delay}ms...`);
-      if (attempt === maxRetries) {
-        console.error("All MongoDB connection attempts failed:", err.message);
-        process.exit(1);
-      }
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-  }
-}
-
 if (process.env.NODE_ENV !== "test") {
-  connectWithRetry();
-
-  server.listen(process.env.PORT, () => {
-    console.log(`Server is running on port ${process.env.PORT}`);
-  });
+  const MAX_RETRIES = 3;
+  (async function connect() {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await mongoose.connect(process.env.MONGO_URL);
+        console.log("MongoDB is connected successfully :)");
+        server.listen(process.env.PORT, () => {
+          console.log(`Server is running on port ${process.env.PORT}`);
+        });
+        return;
+      } catch (err) {
+        if (attempt === MAX_RETRIES) {
+          console.error("Failed to connect to MongoDB:", err.message);
+          process.exit(1);
+        }
+        console.error(`Connection attempt ${attempt}/${MAX_RETRIES} failed. Retrying...`);
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+  })();
 }
 
 module.exports = { app, server };

@@ -16,59 +16,69 @@ Sync Board is a developer collaboration platform where users can discover projec
 | **Build tool** | Vite 8 |
 | **Routing** | react-router-dom 7 |
 | **Icons** | lucide-react |
-| **Styling** | Pure CSS (~4000 lines) with CSS custom properties |
+| **Styling** | Tailwind CSS 4 + CSS custom properties (~4000 lines) |
+| **Real-time** | Socket.IO 4 (WebSocket chat + typing indicators) |
 
 ### Key Architectural Decisions
 
 | Decision | Rationale |
 |----------|-----------|
 | No controller layer | Routes contain inline logic — simpler for a project of this size; can extract later |
-| Single CSS file (~4000 lines) | Fast iteration, no build step for styles; would split into modules at scale |
-| No state management library | `AuthContext` + local state sufficient for current component tree |
+| Styling: Tailwind 4 + custom CSS | Tailwind for utility classes, custom CSS for glassmorphism, theming, animations |
+| No state management library | `AuthContext` + `SocketContext` + local state sufficient for current component tree |
 | `/api/v1` prefix | Allows versioning the API without breaking existing clients |
 | Vite proxy in dev | Eliminates CORS issues during development; frontend never knows backend URL |
+| Socket.IO for real-time chat | WebSocket for instant message delivery + typing indicators + online presence |
 
 ---
 
 ## 2. System Architecture
 
 ```
-                              ┌──────────────────────────────────────────────────────────┐
-                              │                        Browser                            │
-                              │  ┌────────────────────────────────────────────────────┐  │
-                              │  │              React SPA (:5173 / :vercel)           │  │
-                              │  │  ┌──────┐ ┌────────┐ ┌──────────┐ ┌───────────┐   │  │
-                              │  │  │Login │ │ Signup │ │  Feed    │ │ Workspace │   │  │
-                              │  │  │Page  │ │  Page  │ │ (3-col)  │ │ + Canvas  │   │  │
-                              │  │  └──┬───┘ └───┬────┘ └────┬─────┘ └───────────┘   │  │
-                              │  │     │          │           │                        │  │
-                              │  │     └──────────┘    + AuthContext (JWT)             │  │
-                              │  └─────────────────────┬───────────────────────────────┘  │
-                              └────────────────────────┼──────────────────────────────────┘
-                                                       │ HTTP (JSON)
-                                                       ▼
-                              ┌──────────────────────────────────────────────────────────┐
-                              │              Express Server (:5000 / :render)              │
-                              │  ┌───────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐       │
-                              │  │Helmet │ │Compress  │ │  CORS    │ │   JSON   │       │
-                              │  │Headers│ │ (gzip)   │ │Middleware│ │  Parser  │       │
-                              │  └───────┘ └──────────┘ └──────────┘ └──────────┘       │
-                              │  ┌──────────────────────────────────────────────────┐    │
-                              │  │              /api/v1 (routes/index.js)           │    │
-                              │  │  ┌────────┐ ┌──────────┐ ┌──────┐ ┌──────────┐ │    │
-                              │  │  │  Auth  │ │ Projects │ │ Chat │ │  Canvas  │ │    │
-                              │  │  │ Routes │ │ + Feed   │ │Routes│ │  Routes  │ │    │
-                              │  │  └────┬───┘ └────┬─────┘ └──┬───┘ └────┬─────┘ │    │
-                              │  │       │           │          │           │       │    │
-                              │  │       └── JWT Auth Middleware ────────────┘       │    │
-                              │  └──────────────────────────────────────────────────┘    │
-                              │                         │                                │
-                              │                   Mongoose ODM                            │
-                              │                         │                                │
-                              └─────────────────────────┼────────────────────────────────┘
-                                                        │
-                                                  MongoDB Atlas
-                                                  (Cloud Cluster)
+                               ┌──────────────────────────────────────────────────────────────┐
+                               │                        Browser                                │
+                               │  ┌────────────────────────────────────────────────────────┐  │
+                               │  │              React SPA (:5173 / :vercel)               │  │
+                               │  │  ┌──────┐ ┌────────┐ ┌──────────┐ ┌───────────┐ ┌───┐│  │
+                               │  │  │Login │ │ Signup │ │  Feed    │ │ Workspace │ │Chat││  │
+                               │  │  │Page  │ │  Page  │ │ (3-col)  │ │ + Canvas  │ │Pnl ││  │
+                               │  │  └──┬───┘ └───┬────┘ └────┬─────┘ └───────────┘ └───┘│  │
+                               │  │     │          │           │                ▲          │  │
+                               │  │     └──────────┘    + AuthContext (JWT)    │          │  │
+                               │  │                        SocketContext    WebSocket      │  │
+                               │  └─────────────────────┬──────────────────────┼───────────┘  │
+                               └────────────────────────┼──────────────────────┼──────────────┘
+                                                        │ HTTP (JSON)          │ WS
+                                                        ▼                      ▼
+                               ┌──────────────────────────────────────────────────────────────┐
+                               │              Express + Socket.IO (:5000 / :render)           │
+                               │  ┌───────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐          │
+                               │  │Helmet │ │Compress  │ │  CORS    │ │   JSON   │          │
+                               │  │Headers│ │ (gzip)   │ │Middleware│ │  Parser  │          │
+                               │  └───────┘ └──────────┘ └──────────┘ └──────────┘          │
+                               │  ┌──────────────────────────────────────────────────┐      │
+                               │  │              /api/v1 (routes/index.js)           │      │
+                               │  │  ┌────────┐ ┌──────────┐ ┌──────┐ ┌──────────┐ │      │
+                               │  │  │  Auth  │ │ Projects │ │ Chat │ │  Canvas  │ │      │
+                               │  │  │ Routes │ │ + Feed   │ │Routes│ │  Routes  │ │      │
+                               │  │  └────┬───┘ └────┬─────┘ └──┬───┘ └────┬─────┘ │      │
+                               │  │       │           │          │           │       │      │
+                               │  │       └── JWT Auth Middleware ────────────┘       │      │
+                               │  └──────────────────────────────────────────────────┘      │
+                               │  ┌──────────────────────────────────────────────────┐      │
+                               │  │            Socket.IO Server (socket.js)          │      │
+                               │  │  - JWT auth middleware (handshake)               │      │
+                               │  │  - Rooms: project:{projectId}                    │      │
+                               │  │  - Events: chat:message, chat:typing,           │      │
+                               │  │            user-online, user-offline             │      │
+                               │  └──────────────────────────────────────────────────┘      │
+                               │                         │                                   │
+                               │                   Mongoose ODM                              │
+                               │                         │                                   │
+                               └─────────────────────────┼──────────────────────────────────┘
+                                                         │
+                                                   MongoDB Atlas
+                                                   (Cloud Cluster)
 ```
 
 ---
@@ -105,9 +115,13 @@ sync-board/                          # Root (monorepo)
 │   │   │                            #   members, joinRequest[], status, visibility
 │   │   ├── Message.js               # Chat message per project
 │   │   └── CanvasElement.js         # Whiteboard elements (type, position, content)
+│   ├── utils/
+│   │   └── response.js               # Standardized { data, message } / { error, code } helpers
+│   ├── socket.js                    # Socket.IO server (JWT auth, chat rooms, typing, presence)
 │   ├── middlewares/
 │   │   ├── auth.js                  # JWT verification middleware (attaches req.user)
-│   │   └── errorHandler.js          # Global error handler
+│   │   ├── errorHandler.js          # Global error handler (sanitized in all modes)
+│   │   └── joi.js                   # Input validation middleware + schemas
 │   └── __tests__/                   # Jest + Supertest test files
 │       └── auth.test.js
 │
@@ -131,7 +145,8 @@ sync-board/                          # Root (monorepo)
 │       ├── api.js                   # API client functions (every endpoint as named export)
 │       ├── context/
 │       │   ├── AuthContext.jsx      # Global auth state (user, token, login, logout, updateUser)
-│       │   └── ChatContext.jsx      # Global chat state (chatOpen, chatProjectId, startChat, closeChat)
+│       │   ├── ChatContext.jsx      # Global chat state (chatOpen, chatProjectId, startChat, closeChat)
+│       │   └── SocketContext.jsx    # Socket.IO client (connection, rooms, chat events, typing, presence)
 │       ├── pages/
 │       │   ├── Login.jsx            # Sign in form
 │       │   ├── Signup.jsx           # Registration form
@@ -175,19 +190,20 @@ sync-board/                          # Root (monorepo)
 ### 4.1 Middleware Chain
 
 ```
-require dotenv → helmet() → compression() → cors() → express.json() → mount /api/v1 → errorHandler → connect MongoDB → listen
+conditional DNS (prod + SRV) → require dotenv → helmet() → compression() → cors() → express.json() → mount /api/v1 → errorHandler → createSocketServer → connect MongoDB → listen
 ```
 
 | Step | What it does |
 |------|-------------|
-| `dns.setServers()` | Overrides DNS to Google (8.8.8.8, 8.8.4.4) for Atlas SRV resolution — workaround for deployment environments with broken DNS |
+| `dns.setServers()` | When MONGO_URL uses `mongodb+srv` (Atlas SRV) — helps resolve in environments with broken DNS; skipped for `mongodb://` (Docker Compose) |
 | `helmet()` | Sets security headers (X-Content-Type-Options, X-Frame-Options, CSP, etc.) |
 | `compression()` | Gzip-compresses all HTTP responses |
 | `cors()` | Allows origins from `CORS_ORIGIN` env var (comma-separated, default `http://localhost:5173`) |
 | `express.json()` | Parses `application/json` request bodies |
 | `app.use("/api/v1", apiRoutes)` | All application routes mounted under versioned prefix |
-| `app.use(errorHandler)` | Global error handler — catches unhandled errors, returns JSON |
-| `mongoose.connect()` | Connects to MongoDB Atlas (no retry logic) |
+| `app.use(errorHandler)` | Global error handler — catches unhandled errors, returns sanitized JSON |
+| `createSocketServer(server)` | Attaches Socket.IO to HTTP server with JWT auth, chat rooms, typing/presence events |
+| `mongoose.connect()` | Connects to MongoDB Atlas (3 attempts, 1s delay between retries) — exits on failure |
 | `app.listen()` | Starts HTTP server on configured `PORT` |
 
 ### 4.2 Route Mounting (`routes/index.js`)
@@ -360,7 +376,40 @@ Two route files mounted on `/projects` — Express routes are evaluated in order
 
 | Auth | Body | Response |
 |------|------|----------|
-| Required | `{ text }` | Created message (populated sender) |
+| Required | `{ text }` | Created message (populated sender); also emits `chat:message` via Socket.IO |
+
+### 4.4 Auth Middleware (`middlewares/auth.js`)
+
+```javascript
+Reads Authorization header → extracts Bearer token → jwt.verify() → User.findById()
+  → attaches full user document to req.user → next()
+```
+
+- Returns 401 if: no token, invalid token, user not found.
+- Attaches the **full Mongoose User document** (including password hash) — callers should avoid exposing `req.user.password` in responses.
+
+### 4.5 Socket.IO Events
+
+Socket.IO runs on the same HTTP server, authenticated via JWT in the handshake `auth.token`.
+
+#### Client → Server
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `join-project` | `projectId` | Join Socket.IO room for a project's chat |
+| `leave-project` | `projectId` | Leave a project room |
+| `chat:typing` | `{ projectId }` | User is typing in project chat |
+| `chat:stop-typing` | `{ projectId }` | User stopped typing |
+
+#### Server → Client
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `chat:message` | populated `Message` document | New chat message (broadcast to room, excluding sender) |
+| `chat:typing` | `{ userId, username }` | Another user is typing |
+| `chat:stop-typing` | `{ userId }` | User stopped typing |
+| `user-online` | `{ userId, username }` | User joined the project room |
+| `user-offline` | `{ userId }` | User left or disconnected |
 
 #### GET /api/v1/canvas/:projectId
 
@@ -386,17 +435,7 @@ Two route files mounted on `/projects` — Express routes are evaluated in order
 |------|----------|
 | Required | `{ message }` |
 
-### 4.4 Auth Middleware (`middlewares/auth.js`)
-
-```javascript
-Reads Authorization header → extracts Bearer token → jwt.verify() → User.findById()
-  → attaches full user document to req.user → next()
-```
-
-- Returns 401 if: no token, invalid token, user not found.
-- Attaches the **full Mongoose User document** (including password hash) — callers should avoid exposing `req.user.password` in responses.
-
-### 4.5 Database Schemas
+### 4.6 Database Schemas
 
 #### User Model
 
@@ -471,7 +510,7 @@ Reads Authorization header → extracts Bearer token → jwt.verify() → User.f
 }
 ```
 
-### 4.6 Dependencies
+### 4.7 Dependencies
 
 | Package | Purpose |
 |---------|---------|
@@ -484,7 +523,11 @@ Reads Authorization header → extracts Bearer token → jwt.verify() → User.f
 | `helmet` | Security HTTP headers |
 | `compression` | Gzip response compression |
 | `dotenv` | Environment variable loading |
+| `joi` | Request body validation (middleware + schemas) |
+| `express-rate-limit` | Rate limiting on auth endpoints (10 req/15 min) |
+| `socket.io` | WebSocket server for real-time chat events |
 | `nodemon` (dev) | Auto-restart during development |
+| `jest` + `supertest` + `mongodb-memory-server` (dev) | Integration tests |
 
 ---
 
@@ -493,12 +536,14 @@ Reads Authorization header → extracts Bearer token → jwt.verify() → User.f
 ### 5.1 Entry Point (`main.jsx`)
 
 ```javascript
-document.documentElement.setAttribute('data-theme', 'dark')
+const savedTheme = localStorage.getItem('sb-theme')
+document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
 // => Wraps <App /> in <StrictMode> + <BrowserRouter>
 ```
 
-- Sets dark theme as default before first render.
+- Reads saved theme from `localStorage` (defaults to `'dark'`) before first render.
 - `BrowserRouter` enables client-side routing (History API).
+- `App` mounts `AuthProvider` → `SocketProvider` → `<Routes>`.
 
 ### 5.2 Routing (`App.jsx`)
 
@@ -523,7 +568,15 @@ document.documentElement.setAttribute('data-theme', 'dark')
 - `logout()`: clears localStorage + nullifies state + navigates to `/`.
 - `ProtectedRoute` wrapper checks `token` and redirects to `/` if absent.
 
-### 5.4 Component Tree
+### 5.4 Socket Context (`SocketContext.jsx`)
+
+- Provides Socket.IO client connection lifecycle, scoped to authenticated users.
+- On mount (token present): connects to server with JWT auth handshake.
+- Cleanup on unmount or logout: disconnects and removes listeners.
+- Exposes: `connected`, `onlineUsers`, `joinProject`, `leaveProject`, `onMessage`, `sendTyping`, `sendStopTyping`, `onTyping`, `onStopTyping`.
+- `SocketProvider` wraps `HomeLayoutInner` to provide socket access to all dashboard routes.
+
+### 5.5 Component Tree
 
 ```
 <BrowserRouter>
@@ -574,14 +627,16 @@ document.documentElement.setAttribute('data-theme', 'dark')
 </Feed>
 ```
 
-### 5.5 HomeLayout (`HomeLayout.jsx`)
+### 5.6 HomeLayout (`HomeLayout.jsx`)
 
-- Renders a sticky header with logo, navigation links, user avatar dropdown.
-- Uses `<Outlet />` for nested routing.
+- Renders a sticky sidebar alongside `<Outlet />`.
 - Wraps children in `ChatProvider` for global chat state.
 - Conditionally renders global `ChatPanel` when `chatOpen` is true.
+- Mobile bottom nav bar with links to Feed, New Project, Profile, and Chat toggle.
 
-### 5.6 Key Components
+> **Note**: `SocketProvider` is mounted at the `App` level (wrapping `<Routes>`), not inside `HomeLayout`. It conditionally connects only when a valid auth token is present.
+
+### 5.7 Key Components
 
 #### ProjectCard
 - **Two modes**: `compact` (horizontal trending card) and full `feed` (vertical card).
@@ -612,12 +667,13 @@ document.documentElement.setAttribute('data-theme', 'dark')
 - GitHub/LinkedIn render as external links.
 - Gradient save button with spinner.
 
-### 5.7 State Management
+### 5.8 State Management
 
 | Component / Hook | State |
 |------------------|-------|
 | `AuthContext` | `user`, `token`, `loading` |
 | `ChatContext` | `chatOpen`, `chatProjectId`, `chatProjectTitle` |
+| `SocketContext` | `connected`, `onlineUsers`, socket event helpers |
 | `Feed` | `projects[]`, `trendingProjects[]`, `page`, `hasMore`, `likedIds`, `savedIds`, `activeFilter`, `searchQuery`, `feedView` |
 | `CommentSection` | `text`, `open` |
 | `RequestModal` | `note` (local) |
@@ -627,7 +683,7 @@ document.documentElement.setAttribute('data-theme', 'dark')
 | `useTheme` | `theme` ("dark"/"light") persisted to localStorage |
 | `useDraggable` | `position` ({ top, left }) |
 
-### 5.8 Custom Hooks
+### 5.9 Custom Hooks
 
 #### `useTheme`
 - Reads from `localStorage` (defaults to `"dark"`).
@@ -640,13 +696,19 @@ document.documentElement.setAttribute('data-theme', 'dark')
 - Prevents drag on textarea/input.
 - Returns `{ position, dragHandlers }`.
 
-### 5.9 Styling Architecture
+### 5.10 Styling Architecture
 
-All styles live in a single file: **`src/index.css`** (~4700 lines).
+Styles use **Tailwind CSS 4** (via `@tailwindcss/vite` plugin) alongside a **custom CSS file** (`src/index.css`, ~4700 lines).
+
+- Tailwind provides utility classes for layout, spacing, colors, and responsive design.
+- Custom CSS handles glassmorphism effects (`backdrop-filter: blur`), CSS custom property theming, animations/keyframes, and feed-specific component styles.
+- `index.css` starts with `@import "tailwindcss"` to load Tailwind base styles.
 
 #### Theming via CSS Custom Properties
 
 ```css
+@import "tailwindcss";
+
 :root { /* light theme */
   --bg-dark: #ffffff;
   --accent-color: #4f46e5;
@@ -803,18 +865,32 @@ Owner acts on request:
     → Card removed from incoming list
 ```
 
-### 6.6 Chat Flow
+### 6.6 Chat Flow (HTTP + WebSocket)
 
 ```
 User opens chat (global or per-project)
   → ChatContext.startChat(projectId, projectTitle)
+  → SocketContext.joinProject(projectId)
+  → Socket joins room `project:{projectId}`
   → ChatPanel mounts, fetches GET /api/v1/chat/:projectId
   → Renders message history, scrolled to bottom
 
-User sends message
+User sends message (HTTP)
   → POST /api/v1/chat/:projectId { text }
-  → Message appended to local state (optimistic)
+  → Server stores message, emits `chat:message` to room via Socket.IO
+  → All clients in room receive event → append to local messages
   → On error: show toast error
+
+User is typing
+  → Input change fires SocketContext.sendTyping(projectId)
+  → Server broadcasts `chat:typing` to room (excluding sender)
+  → Other clients show "[username] typing..." (clears after 3s)
+  → On blur/enter: SocketContext.sendStopTyping(projectId)
+
+Online presence
+  → On connect: SocketContext broadcasts `user-online` to joined rooms
+  → On disconnect: broadcasts `user-offline` to all rooms
+  → ChatPanel shows green dot when connected
 ```
 
 ---
@@ -842,25 +918,26 @@ User sends message
 | All other `/api/v1/*` routes | Yes | Protected via `middlewares/auth.js` |
 | `/dashboard/*` (frontend) | Yes | Guarded by `<ProtectedRoute>` wrapper |
 
-### 7.3 Current Security Gaps
+### 7.3 Security Gaps — Status
 
 | Gap | Impact | Priority | Status |
 |-----|--------|----------|--------|
 | Password hash in API responses | Anyone with network access can see hashed passwords | **P0 — Critical** | Fixed — stripped via destructuring in auth routes |
 | HTTP 200 for all responses | Clients cannot differentiate error types programmatically | **P0 — Critical** | Fixed — proper status codes (400/401/403/404/409/500/201) |
-| Error messages leak internals | MongoDB errors, stack traces exposed to client | **P1 — High** | Open — some routes still expose raw error messages |
+| Error messages leak internals | MongoDB errors, stack traces exposed to client | **P1 — High** | Partially fixed — global error handler sanitizes; some catch blocks still pass raw errors to `next()` |
 | No input sanitization | XSS, NoSQL injection possible | **P1 — High** | Open |
-| No rate limiting | Brute force / credential stuffing on login | **P1 — High** | Open |
+| Joi validation added | Email format, password min-length, field types validated on all routes | **P1 — High** | Fixed — `middlewares/joi.js` with per-route schemas |
+| Rate limiting on auth | Brute force / credential stuffing on login | **P1 — High** | Fixed — `express-rate-limit` (10 req / 15 min) on `/auth/*` |
 | CORS wide open (was) | Now restricted to `CORS_ORIGIN` env var | **P2 — Fixed** | Fixed |
 | No route guards (was) | Now has `<ProtectedRoute>` wrapper | **P2 — Fixed** | Fixed |
-| Self-request allowed | Owner can send join request to own project | **P3 — Low** | Open |
+| Self-request allowed | Owner can send join request to own project | **P3 — Low** | Fixed — `userId` check in `feed.js` |
 
 ### 7.4 Remaining Security Improvements
 
-1. **Sanitize error messages** — log full error server-side, return generic `"Internal server error"` in production (`NODE_ENV !== 'development'`).
-2. **Input validation library** — add `express-validator` or `joi` for schema-level request validation (email format, password strength).
-3. **Rate limiting** — `express-rate-limit` on `/auth/*` routes: max 10 requests per 15 minutes per IP.
-4. **Prevent self-requests** — block project owners from sending join requests to their own project.
+1. **Sanitize error messages** — ensure all catch blocks use `next(error)` (already done in most routes) and log full error server-side; the global error handler already sanitizes in all modes.
+2. **Input sanitization** — Joi validates but does not sanitize; add trim/escape to prevent XSS/NoSQL injection.
+3. **Rate limiting scope** — consider extending rate limiting beyond auth routes (e.g., project creation).
+4. **MongoDB connection string** — ensure `MONGO_URL` uses a database-specific user with minimal permissions.
 
 ---
 
@@ -913,9 +990,17 @@ canvasElementSchema.index({ projectId: 1 });
 
 ### 9.1 Current State
 
-Most endpoints now return proper HTTP status codes (400, 401, 403, 404, 409, 500, 201). However, some catch blocks still expose raw `error.message` to the client instead of sanitized messages. The `errorHandler` middleware catches unhandled errors and sanitizes them in production.
+All endpoints return proper HTTP status codes and a standardized JSON envelope:
 
-### 9.2 Target Error Response Format
+| Response Type | Format |
+|---------------|--------|
+| **Success** | `{ data: ..., message: "OK" }` |
+| **Client error (4xx)** | `{ error: "...", code: "ERROR_CODE" }` |
+| **Server error (5xx)** | `{ error: "Internal server error", code: "INTERNAL_ERROR" }` |
+
+A helper utility (`utils/response.js`) provides `success(res, data, message, status)` and `error(res, message, code, status, details)` used consistently across all route handlers. The global error handler catches unhandled errors and maps them to appropriate codes.
+
+### 9.2 Standard Error Response Format
 
 ```json
 // Success
@@ -941,28 +1026,40 @@ Most endpoints now return proper HTTP status codes (400, 401, 403, 404, 409, 500
 | Not found | 404 | |
 | Forbidden (not owner) | 403 | |
 | Self-request denied | 400 | |
-| Rate limited | 429 | Not yet implemented |
+| Rate limited | 429 | express-rate-limit on `/auth/*` |
 | Server error | 500 | |
 
 ### 9.4 Global Error Handler (`middlewares/errorHandler.js`)
 
+The error handler maps Mongoose errors to consistent error codes before returning:
+
 ```javascript
-module.exports = (err, req, res, _next) => {
-  console.error(err);
-  res.status(err.status || 500).json({
-    error:
-      process.env.NODE_ENV === "production"
-        ? "Internal server error"
-        : err.message,
-  });
-};
+function mapError(err) {
+  if (err.name === "ValidationError") {
+    const details = Object.values(err.errors).map((e) => e.message);
+    return { message: "Validation failed", code: "VALIDATION_ERROR", status: 400, details };
+  }
+  if (err.code === 11000) {
+    const field = Object.keys(err.keyPattern || {})[0] || "field";
+    return { message: `Duplicate ${field}`, code: "DUPLICATE_KEY", status: 409 };
+  }
+  if (err.name === "CastError") {
+    return { message: "Invalid ID format", code: "INVALID_ID", status: 400 };
+  }
+  return { message: "Internal server error", code: "INTERNAL_ERROR", status: 500 };
+}
 ```
+
+| Error Type | HTTP Status | Code |
+|------------|-------------|------|
+| Mongoose ValidationError | 400 | `VALIDATION_ERROR` |
+| MongoDB duplicate key (11000) | 409 | `DUPLICATE_KEY` |
+| Mongoose CastError (bad ObjectId) | 400 | `INVALID_ID` |
+| Unhandled / generic | 500 | `INTERNAL_ERROR` |
 
 ### 9.5 Remaining Improvements
 
-1. **Sanitize catch blocks** — replace `res.status(500).json({ message: error.message })` with `next(error)` or sanitized messages in remaining raw-exposing routes.
-2. **Standard error code format** — add an `errorCodeMap` to the global error handler for machine-readable error codes.
-3. **Add request logging** — integrate `morgan` for structured HTTP request logging.
+1. **Add request logging** — integrate `morgan` for structured HTTP request logging.
 
 ---
 
@@ -973,7 +1070,7 @@ module.exports = (err, req, res, _next) => {
 | Variable | Required | Default | Used In | Purpose |
 |----------|----------|---------|---------|---------|
 | `PORT` | No | `5000` | `app.js` | HTTP server port |
-| `NODE_ENV` | No | `development` | `errorHandler.js` | Controls error verbosity |
+| `NODE_ENV` | No | `development` | `app.js`, `errorHandler.js` | Controls dev features (error handler currently sanitizes in all modes) |
 | `MONGO_URL` | **Yes** | — | `app.js` | MongoDB Atlas connection string |
 | `JWT_SECRET` | **Yes** | — | `authRoutes.js`, `middlewares/auth.js` | HMAC secret for JWT |
 | `CORS_ORIGIN` | No | `http://localhost:5173` | `app.js` | Comma-separated allowed CORS origins |
@@ -1636,42 +1733,28 @@ npx vitest
 
 ## 17. Known Issues & Security Gaps
 
-### P0 — Critical (Fix Within 1 Week)
+### P0 — Critical
 
-| Issue | Location | Impact | Fix |
-|-------|----------|--------|-----|
-| **Password hash exposed in API responses** | `authRoutes.js` | Anyone with network access can see bcrypt hashes | Add Mongoose `toJSON` transform that deletes `password` |
-| **All responses return HTTP 200** | Every route handler | Clients cannot distinguish success from error | Replace `res.status(200)` with appropriate codes |
+All P0 issues have been resolved: password hashes are stripped from API responses, and proper HTTP status codes are returned.
 
-### P1 — High (Fix Within 1 Month)
+### P1 — High
 
-| Issue | Location | Impact | Fix |
-|-------|----------|--------|-----|
-| **Error messages leak internals** | All `catch` blocks | MongoDB errors, stack traces exposed to client | Sanitize in `errorHandler.js` |
-| **No input validation** | `authRoutes.js` | No email format check, no password strength | Add `express-validator` or `joi` |
-| **No rate limiting** | Auth routes | Brute-force/credential stuffing on login | Add `express-rate-limit` |
-| **`useTheme` `ReferenceError`** | `useTheme.js` | Theme toggle crashes at runtime | Declare `const root = document.documentElement` |
-| **No MongoDB retry logic** | `app.js` | Server starts even if DB is unreachable | Add `mongoose.connection.on("error")` handler + exit |
+| Issue | Location | Impact | Status |
+|-------|----------|--------|--------|
+| **No input sanitization** | All routes | XSS, NoSQL injection possible via user input | Open — Joi validates format but does not sanitize content |
 
-### P2 — Medium (Fix Within 3 Months)
+### P2 — Medium
 
-| Issue | Location | Impact | Fix |
-|-------|----------|--------|-----|
-| **Validation order bug** | `authRoutes.js` | DB lookup before field check | Move field validation before `User.findOne()` |
-| **No database indexes** | All models | Slow queries at 1K+ users | Add indexes (see §8) |
-| **Self-request allowed** | `feed.js` | Owner can request own project | Add `userId !== project.userId` check |
-| **CORS was wide open** | `app.js` (fixed) | Previously allowed all origins | Now restricted to `CORS_ORIGIN` env |
-| **No route guards** | `App.jsx` (fixed) | Previously no redirect for unauthenticated | Now has `<ProtectedRoute>` wrapper |
+| Issue | Location | Impact | Status |
+|-------|----------|--------|--------|
+| **No database indexes** | All models | Slow queries at 1K+ users | Open — indexes defined in ARCHITECTURE.md but not implemented in schema files |
+| **`zod` dependency unused** | `package.json` | Unnecessary package | Open — Joi is used instead; `zod` should be removed |
 
-### P3 — Low (Fix as Needed)
+### P3 — Low
 
 | Issue | Location | Fix |
 |-------|----------|------|
-| **Empty `authRoutes.js`** | `routes/authRoutes.js` | Delete file |
-| **`cookie-parser` unused** | `package.json` | `npm uninstall cookie-parser` |
-| **Dead import in `User.js`** | `models/User.js` | Remove `const { Timestamp } = require("mongodb")` |
 | **Capital T `Timestamp`** | `models/User.js` | Rename to `createdAt` with `timestamps: true` |
-| **Unused `openProject` variable** | `HomeLayout.jsx` | Remove variable |
 | **Typos ("or port", "exits")** | Multiple files | Fix spelling |
 
 ### P4 — Enhancements
@@ -1686,45 +1769,50 @@ npx vitest
 
 ## 18. Future Roadmap
 
+### Completed  
+
+| # | Item |
+|---|------|
+| 1 | Strip password from API responses — via destructuring in auth routes |
+| 2 | Return proper HTTP status codes — 201/400/401/403/404/409/500 |
+| 3 | Fix `useTheme` bug — `const root` declared inside `useEffect` |
+| 4 | Add input validation — Joi schemas in `middlewares/joi.js` across all routes |
+| 6 | Add rate limiting to auth endpoints — `express-rate-limit` (10 req/15 min) |
+| 9 | Add MongoDB retry logic — `connectWithRetry()` with exponential backoff |
+| 10 | Add owner-guard on join requests — `userId` check in `feed.js` |
+| 12 | Set up GitHub Actions CI — lint, build, test, health check |
+| 15 | Docker setup — Dockerfiles + docker-compose.yml |
+| 16 | Deploy to production — Vercel + Render + Atlas |
+| 17 | Socket.IO real-time chat — WebSocket message delivery, typing indicators, online presence |
+
 ### Short-term (Weeks 1-4) —  
 
 | # | Item | Complexity | Depends On |
 |---|------|------------|------------|
-| 1 | Strip password from API responses — Mongoose `toJSON` transform |  | — |
-| 2 | Return proper HTTP status codes — 400/401/404/409/500 |  | — |
-| 3 | Fix `useTheme` bug — declare `const root = document.documentElement` |  | — |
-| 4 | Add input validation — email regex, password strength |  | — |
 | 5 | Add database indexes — `userId`, `timestamp`, `status`, `members` |  | — |
-| 6 | Add rate limiting to auth endpoints (`express-rate-limit`) |  | — |
 | 7 | Add Morgan logging — dev + production formats |  | — |
+| 8 | Add proper error classes — consistent `{ error, code }` response format |  | — |
+| 11 | Write backend tests — Jest + Supertest for auth, projects, collaboration |  | — |
 
 ### Medium-term (Months 1-3) —  
 
 | # | Item | Complexity | Depends On |
 |---|------|------------|------------|
-| 8 | Add proper error classes — consistent `{ error, code }` response format |  | #2 |
-| 9 | Add MongoDB retry logic — `mongoose.connection.on("error")` handler |  | — |
-| 10 | Add owner-guard on join requests — prevent self-requests |  | — |
-| 11 | Write backend tests — Jest + Supertest for auth, projects, collaboration |  | — |
-| 12 | Set up GitHub Actions CI — lint, build, test, health check |  | #11 |
 | 13 | Collaboration notifications — notify owner when request is received |  | — |
 | 14 | Write frontend component tests — Vitest + React Testing Library |  | — |
-| 15 | Docker setup — Dockerfiles + docker-compose.yml |  | — |
-| 16 | Deploy to production — Vercel + Render + Atlas |  | — |
 
 ### Long-term (Months 3-6) —  
 
 | # | Item | Complexity | Depends On |
 |---|------|------------|------------|
-| 17 | Socket.IO real-time collaboration — multi-user whiteboard + live chat |  | — |
-| 18 | Whiteboard persistence — save/load canvas elements with undo/redo |  | — |
+| 18 | Whiteboard collaboration — real-time multi-user canvas via Socket.IO |  | — |
 | 19 | File/image upload — attach images to projects, comments, canvas |  | — |
-| 20 | Team management — invite by email, roles (admin/editor/viewer), permissions |  | #13 |
+| 20 | Team management — invite by email, roles (admin/editor/viewer), permissions |  | — |
 | 21 | Responsive mobile layout — feed, dashboard, workspace views |  | — |
-| 22 | Email verification flow — confirm email on signup |  | #16 |
-| 23 | Password reset flow — "Forgot password?" with email token |  | #16 |
+| 22 | Email verification flow — confirm email on signup |  | — |
+| 23 | Password reset flow — "Forgot password?" with email token |  | — |
 | 24 | Redis caching — feed results, rate limit counters, session store |  | — |
-| 25 | Activity feed — notifications for likes, comments, request status changes |  | #13 |
+| 25 | Activity feed — notifications for likes, comments, request status changes |  | — |
 | 26 | OpenAPI/Swagger API documentation — auto-generated from route metadata |  | — |
 
 ---
@@ -1735,3 +1823,6 @@ npx vitest
 |------|--------|---------|
 | 2026-05-29 | System | Initial architecture document |
 | 2026-05-29 | System | Added Security Model, Database Indexing, Error Handling, Environment Config, Deployment, Docker, CI/CD, Logging, Testing, Scalability sections. Rewrote Known Issues with P0-P4 priority. Expanded Roadmap with complexity labels and dependencies. |
+| 2026-07-02 | System | Updated to reflect current codebase: added Socket.IO, Tailwind CSS 4, Joi validation, rate limiting, MongoDB retry logic, useTheme fix, self-request guard. Corrected error handler behavior. Removed fixed issues from Known Issues and Roadmap. |
+| 2026-07-02 | System | Phase 1 — conditional DNS override, simplified MongoDB connect with .catch() exit |
+| 2026-07-02 | System | Phase 2 — standardized API response format (`{ data, message }` / `{ error, code }`), added `utils/response.js` helper, error handler maps Mongoose errors to codes, all catch blocks sanitized |

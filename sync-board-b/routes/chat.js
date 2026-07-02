@@ -4,18 +4,19 @@ const auth = require("../middlewares/auth");
 const Message = require("../models/Message");
 const Project = require("../models/Project");
 const { validate, schemas } = require("../middlewares/joi");
+const { success, error } = require("../utils/response");
 
 async function requireMember(req, res, next) {
   try {
     const project = await Project.findById(req.params.projectId);
-    if (!project) return res.status(404).json({ error: "Project not found" });
+    if (!project) return error(res, "Project not found", "NOT_FOUND", 404);
 
     const userId = req.user._id.toString();
     const isOwner = project.userId.toString() === userId;
     const isMember = project.members.some((m) => m.toString() === userId);
 
     if (!isOwner && !isMember)
-      return res.status(403).json({ error: "You are not a member of this project" });
+      return error(res, "You are not a member of this project", "FORBIDDEN", 403);
 
     req.project = project;
     next();
@@ -31,7 +32,7 @@ router.get("/:projectId", auth, requireMember, async (req, res, next) => {
       .sort({ timestamp: 1 })
       .limit(200);
 
-    res.json({ messages });
+    success(res, { messages });
   } catch (error) {
     next(error);
   }
@@ -54,7 +55,7 @@ router.post("/:projectId", auth, requireMember, validate(schemas.sendMessage), a
       io.to(`project:${req.params.projectId}`).emit("chat:message", populated);
     }
 
-    res.status(201).json({ message: populated });
+    success(res, { message: populated }, "Message sent", 201);
   } catch (error) {
     next(error);
   }

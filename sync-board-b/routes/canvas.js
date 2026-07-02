@@ -4,18 +4,19 @@ const auth = require("../middlewares/auth");
 const CanvasElement = require("../models/CanvasElement");
 const Project = require("../models/Project");
 const { validate, schemas } = require("../middlewares/joi");
+const { success, error } = require("../utils/response");
 
 async function requireMember(req, res, next) {
   try {
     const project = await Project.findById(req.params.projectId);
-    if (!project) return res.status(404).json({ error: "Project not found" });
+    if (!project) return error(res, "Project not found", "NOT_FOUND", 404);
 
     const userId = req.user._id.toString();
     const isOwner = project.userId.toString() === userId;
     const isMember = project.members.some((m) => m.toString() === userId);
 
     if (!isOwner && !isMember)
-      return res.status(403).json({ error: "You are not a member of this project" });
+      return error(res, "You are not a member of this project", "FORBIDDEN", 403);
 
     req.project = project;
     next();
@@ -30,7 +31,7 @@ router.get("/:projectId", auth, requireMember, async (req, res, next) => {
       .populate("createdBy", "username email")
       .sort({ createdAt: 1 });
 
-    res.json({ elements });
+    success(res, { elements });
   } catch (error) {
     next(error);
   }
@@ -56,7 +57,7 @@ router.post("/:projectId", auth, requireMember, validate(schemas.createCanvasEle
     });
 
     const populated = await element.populate("createdBy", "username email");
-    res.status(201).json({ element: populated });
+    success(res, { element: populated }, "Element created", 201);
   } catch (error) {
     next(error);
   }
@@ -67,13 +68,13 @@ router.patch("/:projectId/:elementId", auth, requireMember, validate(schemas.upd
     const { title, content, color, top, left, rotation, badge, desc, progress } = req.body;
 
     const element = await CanvasElement.findById(req.params.elementId);
-    if (!element) return res.status(404).json({ error: "Element not found" });
+    if (!element) return error(res, "Element not found", "NOT_FOUND", 404);
 
     const isCreator = element.createdBy.toString() === req.user._id.toString();
     const isOwner = req.project.userId.toString() === req.user._id.toString();
 
     if (!isCreator && !isOwner)
-      return res.status(403).json({ error: "Not authorized to update this element" });
+      return error(res, "Not authorized to update this element", "FORBIDDEN", 403);
 
     if (title !== undefined) element.title = title;
     if (content !== undefined) element.content = content;
@@ -88,7 +89,7 @@ router.patch("/:projectId/:elementId", auth, requireMember, validate(schemas.upd
     await element.save();
 
     const populated = await element.populate("createdBy", "username email");
-    res.json({ element: populated });
+    success(res, { element: populated }, "Element updated");
   } catch (error) {
     next(error);
   }
@@ -97,16 +98,16 @@ router.patch("/:projectId/:elementId", auth, requireMember, validate(schemas.upd
 router.delete("/:projectId/:elementId", auth, requireMember, async (req, res, next) => {
   try {
     const element = await CanvasElement.findById(req.params.elementId);
-    if (!element) return res.status(404).json({ error: "Element not found" });
+    if (!element) return error(res, "Element not found", "NOT_FOUND", 404);
 
     const isCreator = element.createdBy.toString() === req.user._id.toString();
     const isOwner = req.project.userId.toString() === req.user._id.toString();
 
     if (!isCreator && !isOwner)
-      return res.status(403).json({ error: "Not authorized to delete this element" });
+      return error(res, "Not authorized to delete this element", "FORBIDDEN", 403);
 
     await CanvasElement.findByIdAndDelete(req.params.elementId);
-    res.json({ message: "Element deleted" });
+    success(res, null, "Element deleted");
   } catch (error) {
     next(error);
   }
