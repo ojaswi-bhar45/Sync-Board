@@ -28,8 +28,8 @@ describe("POST /api/v1/auth/signup", () => {
       .send({ username: "testuser", email: "test@test.com", password: "password123" });
 
     expect(res.status).toBe(201);
-    expect(res.body.user).toBeDefined();
-    expect(res.body.user.password).toBeUndefined(); // ⚠️ currently fails — password is exposed
+    expect(res.body.data.user).toBeDefined();
+    expect(res.body.data.user.password).toBeUndefined();
   });
 
   it("rejects duplicate email", async () => {
@@ -67,7 +67,7 @@ describe("POST /api/v1/auth/login", () => {
       .send({ email: "test@test.com", password: "password123" });
 
     expect(res.status).toBe(200);
-    expect(res.body.token).toBeDefined();
+    expect(res.body.data.token).toBeDefined();
   });
 
   it("rejects wrong password", async () => {
