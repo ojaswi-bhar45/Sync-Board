@@ -49,15 +49,16 @@ app.use("/api/v1", apiRoutes);
 app.use(errorHandler);
 
 if (process.env.NODE_ENV !== "test") {
+  server.listen(process.env.PORT, () => {
+    console.log(`Server is running on port ${process.env.PORT}`);
+  });
+
   const MAX_RETRIES = 3;
   (async function connect() {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         await mongoose.connect(process.env.MONGO_URL);
         console.log("MongoDB is connected successfully :)");
-        server.listen(process.env.PORT, () => {
-          console.log(`Server is running on port ${process.env.PORT}`);
-        });
         return;
       } catch (err) {
         if (attempt === MAX_RETRIES) {
