@@ -31,7 +31,7 @@ export default function Navbar() {
           <div className="hidden sm:flex items-center gap-1">
             <Link to="/dashboard" className={linkClass("/dashboard")}>
               <LayoutDashboard size={16} />
-              Feed
+              Community
             </Link>
             <Link to="/create" className={linkClass("/create")}>
               <PlusSquare size={16} />
@@ -62,7 +62,7 @@ export default function Navbar() {
         <div className="sm:hidden flex items-center justify-center gap-4 pb-3">
           <Link to="/dashboard" className={linkClass("/dashboard")}>
             <LayoutDashboard size={16} />
-            Feed
+            Community
           </Link>
           <Link to="/create" className={linkClass("/create")}>
             <PlusSquare size={16} />

@@ -53,7 +53,7 @@ function HomeLayoutInner() {
           {!isWorkspace && !isCreate && (
             <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden flex items-center justify-around h-14 bg-[var(--bg-sidebar)] border-t border-[var(--border-color)] backdrop-blur-xl bg-opacity-90">
               {[
-                { view: 'feed', icon: Grid3x3, label: 'Feed' },
+                { view: 'feed', icon: Grid3x3, label: 'Community' },
                 { view: 'create', icon: PlusSquare, label: 'New' },
                 { view: 'profile', icon: User, label: 'Profile' },
               ].map(({ view, icon: Icon, label }) => (

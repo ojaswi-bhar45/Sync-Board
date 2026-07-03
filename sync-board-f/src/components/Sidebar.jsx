@@ -39,8 +39,8 @@ export default function Sidebar({
   };
 
   const NAV_ITEMS = [
-    { path: "feed", icon: Grid3x3, label: "Feed" },
-    { path: "my-feed", icon: Rss, label: "My Feed" },
+    { path: "feed", icon: Grid3x3, label: "Community" },
+    { path: "my-feed", icon: Rss, label: "My Projects" },
     { path: "messages", icon: MessageSquare, label: "Messages", badge: 3 },
     { path: "projects", icon: FolderKanban, label: "Projects" },
     { path: "create", icon: PlusSquare, label: "Create Project" },
