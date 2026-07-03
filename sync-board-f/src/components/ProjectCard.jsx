@@ -3,9 +3,9 @@ import { Heart, Handshake, Bookmark, Eye, ArrowUpRight, Clock } from "lucide-rea
 import CommentSection from "./CommentSection";
 
 const STATUS_LABELS = {
-  open: "New Project",
-  in_progress: "In Progress",
-  closed: "Completed",
+  planning: "Planning",
+  active: "Active",
+  completed: "Completed",
 };
 
 function formatTimeAgo(dateString) {
@@ -44,7 +44,7 @@ export default function ProjectCard({
 }) {
   const [imgErr, setImgErr] = useState(false);
 
-  const status = project.status || "open";
+  const status = project.status || "planning";
   const memberCount = project.members?.length || 0;
   const likeCount = project.likes?.length || 0;
   const viewCount = project.views || (project._id ? (project._id.charCodeAt(project._id.length - 1) * 37 + 50) : 250);
@@ -127,6 +127,25 @@ export default function ProjectCard({
 
         {/* Description */}
         <p className="feed-card-desc">{project.description}</p>
+
+        {/* Collaboration status */}
+        <div className="feed-card-collab-row" style={{ marginTop: 8 }}>
+          <span
+            className={`collab-badge ${project.isOpenForCollaboration !== false ? "open" : "closed"}`}
+          >
+            {project.isOpenForCollaboration !== false ? "👥 Looking for Collaborators" : "🔒 Team Full"}
+          </span>
+          {project.lookingFor && project.lookingFor.length > 0 && (
+            <div className="looking-for-tags">
+              {project.lookingFor.slice(0, 3).map((role, i) => (
+                <span key={i} className="looking-for-tag">{role}</span>
+              ))}
+              {project.lookingFor.length > 3 && (
+                <span className="looking-for-tag looking-for-tag-more">+{project.lookingFor.length - 3}</span>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Tech Stack */}
         {project.techStack && project.techStack.length > 0 && (

@@ -100,6 +100,14 @@ export function removeMember(token, projectId, userId) {
   }).then(handleResponse)
 }
 
+export function updateProjectSettings(token, projectId, data) {
+  return fetch(`${BASE}/api/v1/projects/settings/${projectId}`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handleResponse)
+}
+
 // ── Dashboard Projects (CRUD) ──
 export function getMyProjects(token) {
   return fetch(`${BASE}/api/v1/projects/project`, {
@@ -225,6 +233,7 @@ export const api = {
     delete: deleteProject,
     pin: pinProject,
     progress: updateProjectProgress,
+    updateSettings: updateProjectSettings,
   },
   chat: { getMessages, sendMessage },
   canvas: {

@@ -81,9 +81,16 @@ const projectSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: ["open", "in_progress", "closed"],
-    default: "open",
+    enum: ["planning", "active", "completed"],
+    default: "planning",
   },
+
+  isOpenForCollaboration: {
+    type: Boolean,
+    default: true,
+  },
+
+  lookingFor: [{ type: String }],
 
   visibility: {
     type: String,

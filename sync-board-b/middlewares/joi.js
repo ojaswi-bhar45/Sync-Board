@@ -46,12 +46,23 @@ const schemas = {
       .try(Joi.string(), Joi.array().items(Joi.string()))
       .optional()
       .default([]),
+    status: Joi.string()
+      .valid("planning", "active", "completed")
+      .optional()
+      .default("planning"),
+    isOpenForCollaboration: Joi.boolean().optional().default(true),
+    lookingFor: Joi.array().items(Joi.string()).optional().default([]),
   }),
 
   editProject: Joi.object({
     title: Joi.string().min(1).max(200).optional(),
     description: Joi.string().min(1).max(2000).optional(),
     note: Joi.string().max(2000).optional().allow(""),
+    status: Joi.string()
+      .valid("planning", "active", "completed")
+      .optional(),
+    isOpenForCollaboration: Joi.boolean().optional(),
+    lookingFor: Joi.array().items(Joi.string()).optional(),
   }),
 
   addDashboardProject: Joi.object({
@@ -62,6 +73,20 @@ const schemas = {
       "any.required": "Description is required",
     }),
     note: Joi.string().max(2000).optional().allow("").default(""),
+    status: Joi.string()
+      .valid("planning", "active", "completed")
+      .optional()
+      .default("planning"),
+    isOpenForCollaboration: Joi.boolean().optional().default(true),
+    lookingFor: Joi.array().items(Joi.string()).optional().default([]),
+  }),
+
+  updateProjectSettings: Joi.object({
+    status: Joi.string()
+      .valid("planning", "active", "completed")
+      .optional(),
+    isOpenForCollaboration: Joi.boolean().optional(),
+    lookingFor: Joi.array().items(Joi.string()).optional(),
   }),
 
   comment: Joi.object({

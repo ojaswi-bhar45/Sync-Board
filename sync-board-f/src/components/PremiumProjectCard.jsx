@@ -6,9 +6,9 @@ import {
 import CommentSection from "./CommentSection";
 
 const STATUS_LABELS = {
-  open: "New Project",
-  in_progress: "In Progress",
-  closed: "Completed",
+  planning: "Planning",
+  active: "Active",
+  completed: "Completed",
 };
 
 function formatTimeAgo(dateString) {
@@ -52,7 +52,7 @@ export default function PremiumProjectCard({
   const [imgErr, setImgErr] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const status = project.status || "open";
+  const status = project.status || "planning";
   const memberCount = project.members?.length || 0;
   const likeCount = project.likes?.length || 0;
   const commentCount = project.comments?.length || 0;
@@ -144,6 +144,25 @@ export default function PremiumProjectCard({
             )}
           </div>
         )}
+
+        <div className="premium-card-collab-row">
+          <span
+            className={`collab-badge ${project.isOpenForCollaboration !== false ? "open" : "closed"}`}
+            title={project.isOpenForCollaboration !== false ? "Accepting collaborators" : "Team full"}
+          >
+            {project.isOpenForCollaboration !== false ? "👥 Looking for Collaborators" : "🔒 Team Full"}
+          </span>
+          {project.lookingFor && project.lookingFor.length > 0 && (
+            <div className="looking-for-tags">
+              {project.lookingFor.slice(0, 3).map((role, i) => (
+                <span key={i} className="looking-for-tag">{role}</span>
+              ))}
+              {project.lookingFor.length > 3 && (
+                <span className="looking-for-tag looking-for-tag-more">+{project.lookingFor.length - 3}</span>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className={`premium-card-image ${gradientColors[gradientIndex]}`}>
           <div className="premium-card-image-glow" />

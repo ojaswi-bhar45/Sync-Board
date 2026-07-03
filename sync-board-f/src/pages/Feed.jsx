@@ -28,6 +28,9 @@ const FILTERS = [
   { key: "all", label: "All" },
   { key: "trending", label: "Trending" },
   { key: "recent", label: "Recent" },
+  { key: "planning", label: "Planning" },
+  { key: "active", label: "Active" },
+  { key: "completed", label: "Completed" },
   { key: "design", label: "Design" },
   { key: "mobile", label: "Mobile" },
   { key: "ai", label: "AI" },
@@ -38,6 +41,9 @@ const FILTERS = [
 function filterParams(activeFilter) {
   const params = {};
   if (activeFilter === "trending") params.sort = "trending";
+  else if (activeFilter === "planning") { params.status = "planning"; params.sort = "recent"; }
+  else if (activeFilter === "active") { params.status = "active"; params.sort = "recent"; }
+  else if (activeFilter === "completed") { params.status = "completed"; params.sort = "recent"; }
   else if (activeFilter === "design") { params.tag = "design"; params.sort = "recent"; }
   else if (activeFilter === "mobile") { params.tag = "mobile"; params.sort = "recent"; }
   else if (activeFilter === "ai") { params.tag = "ai"; params.sort = "recent"; }
@@ -127,6 +133,7 @@ export default function Feed() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [openForCollaborationOnly, setOpenForCollaborationOnly] = useState(false);
   const sentinelRef = useRef(null);
   const searchTimer = useRef(null);
 
@@ -162,17 +169,18 @@ export default function Feed() {
     localStorage.setItem("savedProjects", JSON.stringify([...set]));
   };
 
-  const fetchProjects = useCallback(async (filter, search, pageNum = 1) => {
+  const fetchProjects = useCallback(async (filter, search, pageNum = 1, openOnly = false) => {
     const params = { page: pageNum, limit: PAGE_LIMIT, ...filterParams(filter) };
     if (search) params.search = search;
+    if (openOnly) params.open = "true";
     const data = await getFeedProjects(params);
     return data;
   }, []);
 
-  const loadInitialProjects = useCallback(async (filter, search) => {
+  const loadInitialProjects = useCallback(async (filter, search, openOnly = false) => {
     setLoading(true);
     try {
-      const data = await fetchProjects(filter, search);
+      const data = await fetchProjects(filter, search, 1, openOnly);
       setProjects(data.projects);
       setPage(1);
       setHasMore(data.hasMore);
@@ -232,8 +240,8 @@ export default function Feed() {
 
 
   useEffect(() => {
-    loadInitialProjects(activeFilter, searchQuery);
-  }, [activeFilter, searchQuery, loadInitialProjects]);
+    loadInitialProjects(activeFilter, searchQuery, openForCollaborationOnly);
+  }, [activeFilter, searchQuery, openForCollaborationOnly, loadInitialProjects]);
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
@@ -251,6 +259,7 @@ export default function Feed() {
       const nextPage = page + 1;
       const params = { page: nextPage, limit: PAGE_LIMIT, ...filterParams(activeFilter) };
       if (searchQuery) params.search = searchQuery;
+      if (openForCollaborationOnly) params.open = "true";
       const data = await getFeedProjects(params);
       setProjects((prev) => {
         const existingIds = new Set(prev.map((p) => p._id));
@@ -453,6 +462,18 @@ export default function Feed() {
                     {activeFilter === f.key && <div className="feed-tab-glow" />}
                   </button>
                 ))}
+              </div>
+
+              <div className="feed-collab-filter">
+                <label className="feed-collab-toggle-label">
+                  <input
+                    type="checkbox"
+                    checked={openForCollaborationOnly}
+                    onChange={(e) => setOpenForCollaborationOnly(e.target.checked)}
+                    className="feed-collab-checkbox"
+                  />
+                  <span className="feed-collab-toggle-text">Only show projects accepting collaborators</span>
+                </label>
               </div>
 
               {showTrending && (

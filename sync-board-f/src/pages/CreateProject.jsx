@@ -7,7 +7,7 @@ import {
   ArrowLeft, Loader2, Plus, X,
   Heading1, FileText, Layers, StickyNote, Tag,
   Lightbulb, Rocket, TrendingUp, ChevronRight,
-  Sparkles,
+  Sparkles, Users, ToggleLeft, ToggleRight,
 } from "lucide-react";
 
 const TRENDING_TAGS = ["React", "Python", "Node.js", "TypeScript", "Go", "Rust", "Next.js", "Tailwind", "MongoDB"];
@@ -137,6 +137,19 @@ export default function CreateProject() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [status, setStatus] = useState("planning");
+  const [isOpenForCollaboration, setIsOpenForCollaboration] = useState(true);
+  const [lookingFor, setLookingFor] = useState([]);
+  const [lookingForInput, setLookingForInput] = useState("");
+
+  const AVAILABLE_ROLES = [
+    "Frontend Developer",
+    "Backend Developer",
+    "UI/UX Designer",
+    "DevOps Engineer",
+    "Mobile Developer",
+    "Designer",
+  ];
   const descRef = useRef(null);
   const noteRef = useRef(null);
 
@@ -183,6 +196,9 @@ export default function CreateProject() {
         description: form.description.trim(),
         techStack: techTags,
         note: form.note.trim(),
+        status,
+        isOpenForCollaboration,
+        lookingFor,
       });
       toast("Project created successfully!");
       navigate("/dashboard/feed");
@@ -286,6 +302,114 @@ export default function CreateProject() {
                   rows={3}
                   className={inputClass("note") + " min-h-[80px]"}
                 />
+              </SectionCard>
+
+              <SectionCard icon={Users} title="Project Status">
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { value: "planning", label: "Planning", desc: "Idea stage" },
+                    { value: "active", label: "Active", desc: "In development" },
+                    { value: "completed", label: "Completed", desc: "Finished" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setStatus(opt.value)}
+                      className={`flex-1 min-w-[100px] p-3 rounded-xl border text-left transition-all duration-200 ${
+                        status === opt.value
+                          ? "bg-indigo-500/15 border-indigo-500/40 text-indigo-300"
+                          : "bg-white/[0.04] border-white/[0.06] text-gray-400 hover:border-white/[0.12]"
+                      }`}
+                    >
+                      <div className="text-sm font-semibold">{opt.label}</div>
+                      <div className="text-[11px] opacity-70 mt-0.5">{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </SectionCard>
+
+              <SectionCard icon={isOpenForCollaboration ? ToggleRight : ToggleLeft} title="Collaboration">
+                <div className="flex items-center gap-3 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsOpenForCollaboration(!isOpenForCollaboration)}
+                    className={`relative w-12 h-6 rounded-full transition-colors ${
+                      isOpenForCollaboration ? "bg-indigo-500" : "bg-gray-600"
+                    }`}
+                  >
+                    <div
+                      className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                        isOpenForCollaboration ? "translate-x-6" : "translate-x-0.5"
+                      }`}
+                    />
+                  </button>
+                  <span className="text-sm text-gray-300">
+                    {isOpenForCollaboration ? "Accepting new members" : "Not accepting members"}
+                  </span>
+                </div>
+
+                <label className="text-xs text-gray-500 mb-2 block">Looking For (roles needed)</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {AVAILABLE_ROLES.map((role) => {
+                    const selected = lookingFor.includes(role);
+                    return (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => {
+                          setLookingFor((prev) =>
+                            selected ? prev.filter((r) => r !== role) : [...prev, role],
+                          );
+                        }}
+                        className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-all ${
+                          selected
+                            ? "bg-indigo-500/15 border-indigo-500/40 text-indigo-300"
+                            : "bg-white/[0.04] border-white/[0.06] text-gray-400 hover:border-white/[0.12]"
+                        }`}
+                      >
+                        {role}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={lookingForInput}
+                    onChange={(e) => setLookingForInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const trimmed = lookingForInput.trim();
+                        if (trimmed && !lookingFor.includes(trimmed)) {
+                          setLookingFor((prev) => [...prev, trimmed]);
+                        }
+                        setLookingForInput("");
+                      }
+                    }}
+                    placeholder="Add custom role..."
+                    className="flex-1 glass-input text-sm"
+                  />
+                </div>
+                {lookingFor.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {lookingFor.map((role) => (
+                      <span
+                        key={role}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/25"
+                      >
+                        {role}
+                        <button
+                          type="button"
+                          onClick={() => setLookingFor((prev) => prev.filter((r) => r !== role))}
+                          className="hover:text-white transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </SectionCard>
 
               <div className="hidden lg:block pt-2">

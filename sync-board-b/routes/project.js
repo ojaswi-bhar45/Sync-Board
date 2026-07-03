@@ -4,6 +4,27 @@ const router = require("express").Router();
 const { validate, schemas } = require("../middlewares/joi");
 const { success, error } = require("../utils/response");
 
+router.patch("/settings/:id", auth, validate(schemas.updateProjectSettings), async (req, res, next) => {
+  const { status, isOpenForCollaboration, lookingFor } = req.body;
+  try {
+    const updates = {};
+    if (status !== undefined) updates.status = status;
+    if (isOpenForCollaboration !== undefined) updates.isOpenForCollaboration = isOpenForCollaboration;
+    if (lookingFor !== undefined) updates.lookingFor = lookingFor;
+
+    const project = await Project.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id },
+      updates,
+      { new: true },
+    );
+    if (!project)
+      return error(res, "Project not found", "NOT_FOUND", 404);
+    success(res, project, "Project settings updated");
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post("/add-projects", auth, validate(schemas.addDashboardProject), async (req, res, next) => {
   let { title, description, note } = req.body;
   try {
@@ -36,6 +57,9 @@ router.patch("/edit-project/:id", auth, validate(schemas.editProject), async (re
   if (req.body.title !== undefined) updates.title = req.body.title;
   if (req.body.description !== undefined) updates.description = req.body.description;
   if (req.body.note !== undefined) updates.note = req.body.note;
+  if (req.body.status !== undefined) updates.status = req.body.status;
+  if (req.body.isOpenForCollaboration !== undefined) updates.isOpenForCollaboration = req.body.isOpenForCollaboration;
+  if (req.body.lookingFor !== undefined) updates.lookingFor = req.body.lookingFor;
   try {
     let project = await Project.findOneAndUpdate(
       { _id: req.params.id, userId: req.user._id },

@@ -23,6 +23,16 @@ function buildFilter(query) {
     filter.$or = [{ title: regex }, { description: regex }];
   }
 
+  if (query.status) {
+    filter.status = query.status;
+  }
+
+  if (query.open === "true") {
+    filter.isOpenForCollaboration = true;
+  } else if (query.open === "false") {
+    filter.isOpenForCollaboration = false;
+  }
+
   return filter;
 }
 
@@ -123,7 +133,7 @@ router.get("/feed", async (req, res, next) => {
 
 router.post("/create", auth, validate(schemas.createProject), async (req, res, next) => {
   try {
-    let { title, description, techStack, note } = req.body;
+    let { title, description, techStack, note, status, isOpenForCollaboration, lookingFor } = req.body;
 
     if (typeof techStack === "string") {
       techStack = techStack.split(",").map((s) => s.trim()).filter(Boolean);
@@ -135,6 +145,9 @@ router.post("/create", auth, validate(schemas.createProject), async (req, res, n
       note,
       techStack: techStack || [],
       userId: req.user._id,
+      status: status || "planning",
+      isOpenForCollaboration: isOpenForCollaboration !== undefined ? isOpenForCollaboration : true,
+      lookingFor: lookingFor || [],
     });
 
     const populated = await project.populate("userId", "username email");
@@ -198,6 +211,12 @@ router.post("/request/:id", auth, validate(schemas.joinRequest), async (req, res
     const project = await Project.findById(req.params.id);
     if (!project)
       return error(res, "Project not found", "NOT_FOUND", 404);
+
+    if (project.status === "completed")
+      return error(res, "This project is completed and no longer accepting members", "PROJECT_COMPLETED", 400);
+
+    if (project.isOpenForCollaboration === false)
+      return error(res, "This project is not accepting collaborators", "COLLABORATION_CLOSED", 400);
 
     if (project.userId.toString() === req.user._id.toString())
       return error(res, "You cannot request to join your own project", "SELF_REQUEST", 400);

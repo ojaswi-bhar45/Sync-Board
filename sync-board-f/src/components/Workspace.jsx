@@ -4,9 +4,15 @@ import { useAuth } from '../context/AuthContext';
 import Toolbar from './Toolbar';
 import Canvas from './Whiteboard/Canvas';
 import ChatPanel from './ChatPanel';
-import { getCanvasElements, createCanvasElement, updateCanvasElement, deleteCanvasElement } from '../api';
+import { getCanvasElements, createCanvasElement, updateCanvasElement, deleteCanvasElement, updateProjectSettings } from '../api';
 import { toast } from './Toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
+
+const STATUS_LABELS = {
+  planning: "Planning",
+  active: "Active",
+  completed: "Completed",
+};
 
 export default function Workspace() {
   const { projectId } = useParams();
@@ -16,6 +22,13 @@ export default function Workspace() {
   const [activeTool, setActiveTool] = useState('pointer');
   const [elements, setElements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingStatus, setEditingStatus] = useState(false);
+  const [editingLookingFor, setEditingLookingFor] = useState(false);
+  const [lookingForInput, setLookingForInput] = useState("");
+
+  const [projectStatus, setProjectStatus] = useState(project?.status || "planning");
+  const [projectOpenForCollab, setProjectOpenForCollab] = useState(project?.isOpenForCollaboration !== false);
+  const [projectLookingFor, setProjectLookingFor] = useState(project?.lookingFor || []);
 
   const isAdmin = project?.userId?._id === user?._id || project?.userId === user?._id;
 
@@ -88,9 +101,134 @@ export default function Workspace() {
   return (
     <>
       <div className="workspace-header">
-        <span className="workspace-project-name">{project.title}</span>
-        {isAdmin && <span className="text-xs text-indigo-400 ml-2">(Admin)</span>}
+        <div className="workspace-header-left">
+          <span className="workspace-project-name">{project.title}</span>
+          {isAdmin && <span className="text-xs text-indigo-400 ml-2">(Admin)</span>}
+        </div>
+        <div className="workspace-header-right">
+          <span className={`status-badge ${projectStatus}`}>
+            <span className="status-dot" />
+            {STATUS_LABELS[projectStatus] || projectStatus}
+          </span>
+          <span
+            className={`collab-badge ${projectOpenForCollab ? "open" : "closed"}`}
+          >
+            {projectOpenForCollab ? "👥 Open" : "🔒 Full"}
+          </span>
+        </div>
       </div>
+
+      {isAdmin && (
+        <div className="workspace-settings-bar">
+          <div className="workspace-settings-group">
+            <span className="workspace-settings-label">Status</span>
+            <select
+              value={projectStatus}
+              onChange={(e) => {
+                const newStatus = e.target.value;
+                setProjectStatus(newStatus);
+                updateProjectSettings(token, projectId, { status: newStatus }).catch((err) =>
+                  toast(err.message, "error")
+                );
+              }}
+              className="workspace-settings-select"
+            >
+              <option value="planning">Planning</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+
+          <div className="workspace-settings-group">
+            <span className="workspace-settings-label">Collaboration</span>
+            <button
+              className={`workspace-toggle-btn ${projectOpenForCollab ? "active" : ""}`}
+              onClick={() => {
+                const newVal = !projectOpenForCollab;
+                setProjectOpenForCollab(newVal);
+                updateProjectSettings(token, projectId, { isOpenForCollaboration: newVal }).catch((err) =>
+                  toast(err.message, "error")
+                );
+              }}
+            >
+              <div className={`workspace-toggle-track ${projectOpenForCollab ? "active" : ""}`}>
+                <div className="workspace-toggle-thumb" />
+              </div>
+              <span>{projectOpenForCollab ? "Accepting" : "Not Accepting"}</span>
+            </button>
+          </div>
+
+          <div className="workspace-settings-group workspace-settings-group-roles">
+            <span className="workspace-settings-label">Looking For</span>
+            <div className="workspace-looking-for">
+              {projectLookingFor.map((role) => (
+                <span key={role} className="looking-for-tag">
+                  {role}
+                  <button
+                    onClick={() => {
+                      const updated = projectLookingFor.filter((r) => r !== role);
+                      setProjectLookingFor(updated);
+                      updateProjectSettings(token, projectId, { lookingFor: updated }).catch((err) =>
+                        toast(err.message, "error")
+                      );
+                    }}
+                    className="looking-for-remove"
+                  >
+                    <X size={10} />
+                  </button>
+                </span>
+              ))}
+              <button
+                className="looking-for-add-btn"
+                onClick={() => setEditingLookingFor(true)}
+              >
+                + Add Role
+              </button>
+            </div>
+            {editingLookingFor && (
+              <div className="workspace-looking-for-input">
+                <input
+                  type="text"
+                  value={lookingForInput}
+                  onChange={(e) => setLookingForInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const trimmed = lookingForInput.trim();
+                      if (trimmed && !projectLookingFor.includes(trimmed)) {
+                        const updated = [...projectLookingFor, trimmed];
+                        setProjectLookingFor(updated);
+                        updateProjectSettings(token, projectId, { lookingFor: updated }).catch((err) =>
+                          toast(err.message, "error")
+                        );
+                      }
+                      setLookingForInput("");
+                      setEditingLookingFor(false);
+                    }
+                    if (e.key === "Escape") {
+                      setLookingForInput("");
+                      setEditingLookingFor(false);
+                    }
+                  }}
+                  placeholder="Type role name..."
+                  autoFocus
+                  className="workspace-looking-for-field"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!isAdmin && projectLookingFor.length > 0 && (
+        <div className="workspace-looking-for-bar">
+          <span className="workspace-looking-for-label">Looking For:</span>
+          {projectLookingFor.map((role) => (
+            <span key={role} className="looking-for-tag">{role}</span>
+          ))}
+        </div>
+      )}
+
       <Toolbar activeTool={activeTool} setActiveTool={setActiveTool} onAddSticky={handleAddSticky} isAdmin={isAdmin} />
       {loading ? (
         <div className="flex items-center justify-center h-full">

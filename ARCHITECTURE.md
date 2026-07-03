@@ -142,7 +142,7 @@ sync-board/                          # Root (monorepo)
 │       ├── App.jsx                  # Route definitions
 │       ├── App.css                  # Empty (all styles in index.css)
 │       ├── index.css                # All styles (~4000 lines), CSS custom properties
-│       ├── api.js                   # API client functions (every endpoint as named export)
+│       ├── api.js                   # API client functions (including updateProjectSettings)
 │       ├── context/
 │       │   ├── AuthContext.jsx      # Global auth state (user, token, login, logout, updateUser)
 │       │   ├── ChatContext.jsx      # Global chat state (chatOpen, chatProjectId, startChat, closeChat)
@@ -254,16 +254,16 @@ Two route files mounted on `/projects` — Express routes are evaluated in order
 | Aspect | Detail |
 |--------|--------|
 | **Auth** | No (public) |
-| **Query params** | `page` (default 1), `limit` (default 12, max 50), `sort` ("recent" / "trending"), `search`, `tag` |
+| **Query params** | `page` (default 1), `limit` (default 12, max 50), `sort` ("recent" / "trending"), `search`, `tag`, `status` ("planning"/"active"/"completed"), `open` ("true" filters to `isOpenForCollaboration: true`) |
 | **Response** | `{ projects[], page, totalPages, total, hasMore }` |
-| **Details** | Uses MongoDB aggregation pipeline: `$match` → `$addFields` (likesCount) → `$sort` → `$skip` → `$limit` → `$lookup` (user + comments.user) → `$project` |
+| **Details** | Uses MongoDB aggregation pipeline: `$match` (with optional status/isOpenForCollaboration filters) → `$addFields` (likesCount) → `$sort` → `$skip` → `$limit` → `$lookup` (user + comments.user) → `$project` |
 
 #### POST /api/v1/projects/create
 
 | Aspect | Detail |
 |--------|--------|
 | **Auth** | Required |
-| **Body** | `{ title, description, techStack, note }` |
+| **Body** | `{ title, description, techStack, note, status, isOpenForCollaboration, lookingFor }` |
 | **Validates** | Title and description required |
 | **Response** | Created project (populated userId) |
 
@@ -290,7 +290,7 @@ Two route files mounted on `/projects` — Express routes are evaluated in order
 | **Auth** | Required |
 | **Body** | `{ note }` |
 | **Behavior** | Pushes `{ user, note, status: "pending", createdAt }` to `project.joinRequest[]` |
-| **Checks** | Duplicate request, already a member (400), does **not** check self-request |
+| **Checks** | Duplicate request, already a member (400), self-request (400), project `isOpenForCollaboration === false` (400), project `status === "completed"` (400) |
 | **Response** | `{ message }` |
 
 #### GET /api/v1/projects/incoming-requests
@@ -346,13 +346,19 @@ Two route files mounted on `/projects` — Express routes are evaluated in order
 
 | Auth | Body |
 |------|------|
-| Required | `{ title, description, techStack, note }` |
+| Required | `{ title, description, techStack, note, status, isOpenForCollaboration, lookingFor }` |
 
 #### PATCH /api/v1/projects/edit-project/:id
 
 | Auth | Owner guard | Behavior |
 |------|-------------|----------|
-| Required | `findOneAndUpdate({ _id: params.id, userId: req.user._id })` | Updates title, description, note if provided |
+| Required | `findOneAndUpdate({ _id: params.id, userId: req.user._id })` | Updates title, description, note, status, isOpenForCollaboration, lookingFor if provided |
+
+#### PATCH /api/v1/projects/settings/:id
+
+| Auth | Owner guard | Behavior |
+|------|-------------|----------|
+| Required | `findOneAndUpdate({ _id: params.id, userId: req.user._id })` | Updates status, isOpenForCollaboration, lookingFor — lightweight settings-only endpoint for inline workspace controls |
 
 #### GET /api/v1/profile/
 
@@ -470,12 +476,14 @@ Socket.IO runs on the same HTTP server, authenticated via JWT in the handshake `
     status: { enum: ["pending", "accepted", "rejected"], default: "pending" },
     createdAt: { type: Date, default: Date.now }
   }],
-  status:      { enum: ["open", "in_progress", "closed"], default: "open" },
-  visibility:  { enum: ["public", "private"], default: "public" },
-  progress:    { type: Number, default: 0, min: 0, max: 100 },
-  pinned:      { type: Boolean, default: false },
-  image:       { type: String, default: "" },
-  timestamp:   { type: Date, default: Date.now }
+  status:                { enum: ["planning", "active", "completed"], default: "planning" },
+  isOpenForCollaboration: { type: Boolean, default: true },
+  lookingFor:            [{ type: String }],
+  visibility:            { enum: ["public", "private"], default: "public" },
+  progress:              { type: Number, default: 0, min: 0, max: 100 },
+  pinned:                { type: Boolean, default: false },
+  image:                 { type: String, default: "" },
+  timestamp:             { type: Date, default: Date.now }
 }
 ```
 
@@ -611,6 +619,7 @@ document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
 
     <Feed Header>
     <Filter Tabs>
+    <Collab Toggle (checkbox: "Only show accepting collaborators")>
     <Trending Section>
     <Main Cards>
       <ProjectCard>
@@ -640,8 +649,9 @@ document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
 
 #### ProjectCard
 - **Two modes**: `compact` (horizontal trending card) and full `feed` (vertical card).
-- **Feed mode**: avatar + user info + status badge → title → description → tech stack → thumbnail → actions → CommentSection.
+- **Feed mode**: avatar + user info + status badge (planning/active/completed) + collaboration badge → title → description → lookingFor tags → tech stack → thumbnail → actions → CommentSection.
 - Engagement: like, bookmark, comment, collaborate.
+- Collaboration badge: "👥 Looking for Collaborators" when `isOpenForCollaboration === true`, "🔒 Team Full" otherwise.
 
 #### CommentSection
 - Trigger: "N comments" toggles open/closed.
@@ -667,6 +677,12 @@ document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
 - GitHub/LinkedIn render as external links.
 - Gradient save button with spinner.
 
+#### Workspace
+- Canvas + chat for a single project.
+- **Owner controls** (visible only to project owner): status selector (planning/active/completed), collaboration toggle (open/closed), lookingFor role management (add/remove roles).
+- Non-owner view: read-only status badge, collaboration badge, lookingFor tags.
+- Uses `updateProjectSettings(token, projectId, { status, isOpenForCollaboration, lookingFor })` for inline settings updates.
+
 ### 5.8 State Management
 
 | Component / Hook | State |
@@ -674,12 +690,13 @@ document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
 | `AuthContext` | `user`, `token`, `loading` |
 | `ChatContext` | `chatOpen`, `chatProjectId`, `chatProjectTitle` |
 | `SocketContext` | `connected`, `onlineUsers`, socket event helpers |
-| `Feed` | `projects[]`, `trendingProjects[]`, `page`, `hasMore`, `likedIds`, `savedIds`, `activeFilter`, `searchQuery`, `feedView` |
+| `Feed` | `projects[]`, `trendingProjects[]`, `page`, `hasMore`, `likedIds`, `savedIds`, `activeFilter`, `searchQuery`, `feedView`, `openForCollaborationOnly` |
 | `CommentSection` | `text`, `open` |
 | `RequestModal` | `note` (local) |
 | `CollaborationRequestsView` | `incoming[]`, `outgoing[]`, `activeTab`, `loading`, `actionLoading` |
 | `ProjectsList` | `teams[]`, `loading`, `filter`, `searchQuery` |
 | `Profile` | `profile`, `loading`, `saving` |
+| `Workspace` | `projectStatus`, `projectOpenForCollab`, `projectLookingFor`, `editingStatus`, `editingLookingFor`, `lookingForInput`, `activeTool`, `elements` |
 | `useTheme` | `theme` ("dark"/"light") persisted to localStorage |
 | `useDraggable` | `position` ({ top, left }) |
 

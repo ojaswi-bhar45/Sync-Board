@@ -22,7 +22,8 @@ function SkeletonCard() {
 
 function Badge({ status }) {
   if (!status) return null;
-  return <span className={`project-badge ${status}`}>{status.replace("_", " ")}</span>;
+  const labels = { planning: "Planning", active: "Active", completed: "Completed" };
+  return <span className={`project-badge ${status}`}>{labels[status] || status.replace("_", " ")}</span>;
 }
 
 export default function ProjectsList() {

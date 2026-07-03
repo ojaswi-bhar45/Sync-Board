@@ -34,9 +34,9 @@ function formatCount(num) {
 
 function getAchievements(project) {
   const badges = [];
-  if (project.status === "open") badges.push({ label: "New Project", icon: Lightbulb, color: "#6366f1" });
-  if (project.status === "in_progress") badges.push({ label: "In Progress", icon: Target, color: "#f59e0b" });
-  if (project.status === "closed") badges.push({ label: "Completed", icon: CheckCircle, color: "#10b981" });
+  if (project.status === "planning") badges.push({ label: "Planning", icon: Lightbulb, color: "#6366f1" });
+  if (project.status === "active") badges.push({ label: "Active", icon: Target, color: "#10b981" });
+  if (project.status === "completed") badges.push({ label: "Completed", icon: CheckCircle, color: "#3b82f6" });
   if (project.likes?.length >= 5) badges.push({ label: "Trending", icon: Zap, color: "#ec4899" });
   if (project.members?.length >= 2) badges.push({ label: "Team Player", icon: Users, color: "#06b6d4" });
   if (project.progress >= 100) badges.push({ label: "100% Complete", icon: CheckCircle, color: "#10b981" });
