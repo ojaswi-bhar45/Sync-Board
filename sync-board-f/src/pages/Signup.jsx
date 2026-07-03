@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import { signup as apiSignup } from '../api';
 import AuthCard from '../components/AuthCard';
 import PasswordStrength from '../components/PasswordStrength';
@@ -33,7 +32,6 @@ const INITIAL_FORM = { username: '', email: '', password: '' };
 
 export default function Signup() {
   const navigate = useNavigate();
-  const { login } = useAuth();
   const [form, setForm] = useState(INITIAL_FORM);
   const [touched, setTouched] = useState({});
   const [showPassword, setShowPassword] = useState(false);
@@ -74,18 +72,13 @@ export default function Signup() {
 
     setLoading(true);
     try {
-      const data = await apiSignup({
+      await apiSignup({
         username: form.username.trim(),
         email: form.email.trim(),
         password: form.password,
       });
 
-      if (data.user) {
-        if (data.token) login(data.user, data.token);
-        navigate('/dashboard');
-      } else {
-        setError(data.message || 'Registration failed');
-      }
+      navigate('/');
     } catch {
       setError('Unable to connect to server');
     } finally {

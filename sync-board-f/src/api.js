@@ -6,9 +6,9 @@ const headers = (token) => ({
 })
 
 async function handleResponse(res) {
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.message || 'Request failed')
-  return data
+  const body = await res.json()
+  if (!res.ok) throw new Error(body.message || 'Request failed')
+  return body.data
 }
 
 // ── Auth ──

@@ -33,11 +33,11 @@ export default function Login() {
     try {
       const data = await apiLogin({ email, password });
 
-      if (data.token) {
+      if (data?.token) {
         login(data.user, data.token);
         navigate('/dashboard');
       } else {
-        setError(data.message || 'Login failed');
+        setError('Login failed');
       }
     } catch {
       setError('Unable to connect to server');
