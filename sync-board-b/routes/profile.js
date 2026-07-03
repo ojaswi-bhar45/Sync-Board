@@ -2,7 +2,7 @@ const User = require("../models/User");
 const auth = require("../middlewares/auth");
 const router = require("express").Router();
 const { validate, schemas } = require("../middlewares/joi");
-const { success, error } = require("../utils/response");
+const { success } = require("../utils/response");
 
 router.get("/", auth, async (req, res, next) => {
   try {
