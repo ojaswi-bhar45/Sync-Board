@@ -11,6 +11,7 @@ import CreateProject from './pages/CreateProject';
 import Profile from './components/Profile';
 import ProjectsList from './components/ProjectsList';
 import Workspace from './components/Workspace';
+import ProjectDetail from './pages/ProjectDetail';
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="create" element={<CreateProject />} />
             <Route path="profile" element={<Profile />} />
             <Route path="projects" element={<ProjectsList />} />
+            <Route path="project/:projectId" element={<ProjectDetail />} />
             <Route path="workspace/:projectId" element={<Workspace />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

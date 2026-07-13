@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import PremiumProjectCard from "../components/PremiumProjectCard";
+import CompactProjectCard from "../components/CompactProjectCard";
 import TrendingCarousel from "../components/TrendingCarousel";
 import FeedRightPanel from "../components/FeedRightPanel";
 import RequestModal from "../components/RequestModal";
@@ -10,47 +10,21 @@ import { toast } from "../components/Toast";
 import {
   getFeedProjects,
   toggleLike,
-  addComment,
   sendJoinRequest,
 } from "../api";
 import CollaborationRequestsView from "../components/CollaborationRequestsView";
 import TeamsView from "../components/TeamsView";
 import {
   Loader2, FolderOpen, Search, Plus, Sparkles,
-  SlidersHorizontal, Home, Handshake, Users,
+  Home, Handshake, Users,
 } from "lucide-react";
 
 const PAGE_LIMIT = 12;
 const TRENDING_LIMIT = 8;
 const SEARCH_DEBOUNCE = 350;
 
-const FILTERS = [
-  { key: "all", label: "All" },
-  { key: "trending", label: "Trending" },
-  { key: "recent", label: "Recent" },
-  { key: "planning", label: "Planning" },
-  { key: "active", label: "Active" },
-  { key: "completed", label: "Completed" },
-  { key: "design", label: "Design" },
-  { key: "mobile", label: "Mobile" },
-  { key: "ai", label: "AI" },
-  { key: "webdev", label: "Web Dev" },
-  { key: "opensource", label: "Open Source" },
-];
-
-function filterParams(activeFilter) {
-  const params = {};
-  if (activeFilter === "trending") params.sort = "trending";
-  else if (activeFilter === "planning") { params.status = "planning"; params.sort = "recent"; }
-  else if (activeFilter === "active") { params.status = "active"; params.sort = "recent"; }
-  else if (activeFilter === "completed") { params.status = "completed"; params.sort = "recent"; }
-  else if (activeFilter === "design") { params.tag = "design"; params.sort = "recent"; }
-  else if (activeFilter === "mobile") { params.tag = "mobile"; params.sort = "recent"; }
-  else if (activeFilter === "ai") { params.tag = "ai"; params.sort = "recent"; }
-  else if (activeFilter === "webdev") { params.tag = "webdev"; params.sort = "recent"; }
-  else if (activeFilter === "opensource") { params.tag = "opensource"; params.sort = "recent"; }
-  else params.sort = "recent";
-  return params;
+function filterParams() {
+  return { sort: "recent" };
 }
 
 function FeedLeftNav({ user, activeView, onFeedNav }) {
@@ -125,12 +99,9 @@ export default function Feed() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [likedIds, setLikedIds] = useState(new Set());
-  const [savedIds, setSavedIds] = useState(new Set());
   const [likeLoading, setLikeLoading] = useState(null);
-  const [commentLoading, setCommentLoading] = useState(null);
   const [reqModal, setReqModal] = useState({ open: false, project: null });
   const [reqLoading, setReqLoading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [openForCollaborationOnly, setOpenForCollaborationOnly] = useState(false);
@@ -156,31 +127,18 @@ export default function Feed() {
     );
   }, [extractUserId]);
 
-  const buildSavedSet = useCallback(() => {
-    try {
-      const raw = localStorage.getItem("savedProjects");
-      return new Set(raw ? JSON.parse(raw) : []);
-    } catch {
-      return new Set();
-    }
-  }, []);
-
-  const persistSaved = (set) => {
-    localStorage.setItem("savedProjects", JSON.stringify([...set]));
-  };
-
-  const fetchProjects = useCallback(async (filter, search, pageNum = 1, openOnly = false) => {
-    const params = { page: pageNum, limit: PAGE_LIMIT, ...filterParams(filter) };
+  const fetchProjects = useCallback(async (search, pageNum = 1, openOnly = false) => {
+    const params = { page: pageNum, limit: PAGE_LIMIT, ...filterParams() };
     if (search) params.search = search;
     if (openOnly) params.open = "true";
     const data = await getFeedProjects(params);
     return data;
   }, []);
 
-  const loadInitialProjects = useCallback(async (filter, search, openOnly = false) => {
+  const loadInitialProjects = useCallback(async (search, openOnly = false) => {
     setLoading(true);
     try {
-      const data = await fetchProjects(filter, search, 1, openOnly);
+      const data = await fetchProjects(search, 1, openOnly);
       setProjects(data.projects);
       setPage(1);
       setHasMore(data.hasMore);
@@ -232,16 +190,15 @@ export default function Feed() {
   }, [focusSearchInput]);
 
   useEffect(() => {
-    loadInitialProjects("all", "");
+    loadInitialProjects("");
     fetchTrending();
-    setSavedIds(buildSavedSet());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
   useEffect(() => {
-    loadInitialProjects(activeFilter, searchQuery, openForCollaborationOnly);
-  }, [activeFilter, searchQuery, openForCollaborationOnly, loadInitialProjects]);
+    loadInitialProjects(searchQuery, openForCollaborationOnly);
+  }, [searchQuery, openForCollaborationOnly, loadInitialProjects]);
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
@@ -257,7 +214,7 @@ export default function Feed() {
     setLoadingMore(true);
     try {
       const nextPage = page + 1;
-      const params = { page: nextPage, limit: PAGE_LIMIT, ...filterParams(activeFilter) };
+      const params = { page: nextPage, limit: PAGE_LIMIT, ...filterParams() };
       if (searchQuery) params.search = searchQuery;
       if (openForCollaborationOnly) params.open = "true";
       const data = await getFeedProjects(params);
@@ -283,7 +240,7 @@ export default function Feed() {
     } finally {
       setLoadingMore(false);
     }
-  }, [loadingMore, hasMore, loading, page, activeFilter, searchQuery, extractUserId]);
+  }, [loadingMore, hasMore, loading, page, searchQuery, extractUserId]);
 
   useEffect(() => {
     if (loading) return;
@@ -347,32 +304,6 @@ export default function Feed() {
     }
   };
 
-  const handleSave = (projectId) => {
-    setSavedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(projectId)) next.delete(projectId);
-      else next.add(projectId);
-      persistSaved(next);
-      return next;
-    });
-  };
-
-  const handleComment = async (projectId, text) => {
-    if (!token) return toast("Please login to comment", "error");
-    setCommentLoading(projectId);
-    try {
-      const result = await addComment(token, projectId, text);
-      setProjects((prev) =>
-        prev.map((p) => (p._id === projectId ? { ...p, comments: result.comments } : p)),
-      );
-      toast("Comment added!");
-    } catch (err) {
-      toast(err.message, "error");
-    } finally {
-      setCommentLoading(null);
-    }
-  };
-
   const handleRequest = async (note) => {
     if (!token) return toast("Please login", "error");
     setReqLoading(true);
@@ -387,20 +318,16 @@ export default function Feed() {
     }
   };
 
-  const handleViewProject = (project) => {
-    navigate(`/dashboard/workspace/${project._id}`, { state: { project } });
-  };
-
   const handleFeedNav = (view) => {
     setFeedView(view);
   };
 
   const handleProjectsChanged = useCallback(() => {
-    loadInitialProjects(activeFilter, searchQuery);
+    loadInitialProjects(searchQuery);
     setTeamsRefreshKey((k) => k + 1);
-  }, [loadInitialProjects, activeFilter, searchQuery]);
+  }, [loadInitialProjects, searchQuery]);
 
-  const showTrending = trendingProjects.length > 0 && activeFilter === "all" && !searchQuery;
+  const showTrending = trendingProjects.length > 0 && !searchQuery;
 
   return (
     <>
@@ -445,23 +372,8 @@ export default function Feed() {
                     <Plus size={18} />
                     <span className="new-post-btn-text">New Post</span>
                   </button>
-                  <button className="feed-filter-btn" title="Filters">
-                    <SlidersHorizontal size={18} />
-                  </button>
-                </div>
-              </div>
 
-              <div className="feed-tabs">
-                {FILTERS.map((f) => (
-                  <button
-                    key={f.key}
-                    onClick={() => setActiveFilter(f.key)}
-                    className={`feed-tab ${activeFilter === f.key ? "active" : ""}`}
-                  >
-                    {f.label}
-                    {activeFilter === f.key && <div className="feed-tab-glow" />}
-                  </button>
-                ))}
+                </div>
               </div>
 
               <div className="feed-collab-filter">
@@ -518,17 +430,11 @@ export default function Feed() {
                         className="feed-card-wrapper"
                         style={{ animationDelay: `${Math.min(index % PAGE_LIMIT, 6) * 40}ms` }}
                       >
-                        <PremiumProjectCard
+                        <CompactProjectCard
                           project={project}
                           isLiked={likedIds.has(project._id)}
-                          isSaved={savedIds.has(project._id)}
                           onLike={handleLike}
-                          onSave={handleSave}
-                          onComment={handleComment}
-                          onRequest={(p) => setReqModal({ open: true, project: p })}
-                          onViewProject={handleViewProject}
                           likeLoading={likeLoading === project._id}
-                          commentLoading={commentLoading === project._id}
                         />
                       </div>
                     ))}
