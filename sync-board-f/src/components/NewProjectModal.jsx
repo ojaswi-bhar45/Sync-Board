@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Users, ToggleRight, ToggleLeft } from 'lucide-react';
+import { X, ToggleRight, ToggleLeft } from 'lucide-react';
 import { createDashboardProject } from '../api';
 
 export default function NewProjectModal({ token, onClose, onCreated }) {

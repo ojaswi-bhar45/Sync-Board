@@ -240,7 +240,7 @@ export default function Feed() {
     } finally {
       setLoadingMore(false);
     }
-  }, [loadingMore, hasMore, loading, page, searchQuery, extractUserId]);
+  }, [loadingMore, hasMore, loading, page, searchQuery, openForCollaborationOnly, extractUserId]);
 
   useEffect(() => {
     if (loading) return;

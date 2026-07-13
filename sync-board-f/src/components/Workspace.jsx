@@ -22,7 +22,6 @@ export default function Workspace() {
   const [activeTool, setActiveTool] = useState('pointer');
   const [elements, setElements] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editingStatus, setEditingStatus] = useState(false);
   const [editingLookingFor, setEditingLookingFor] = useState(false);
   const [lookingForInput, setLookingForInput] = useState("");
 
