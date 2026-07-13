@@ -37,11 +37,11 @@ No more cold DMs. No more abandoned side projects. Just a board to sync on.
 ##  Features
 
 ###  Discovery & Feed
-- **Three-column feed layout** — navigation sidebar, scrollable project cards, trending tags panel
+- **Three-column feed layout** — navigation sidebar, compact project cards, trending tags panel
 - **Infinite scroll** — paginated via Intersection Observer, no "Load More" button
-- **Search + filter** — by keyword, tag, or sort order (recent, trending)
-- **Trending section** — horizontal carousel of hot projects
-- **Project cards** — avatar, tech stack pills, like button, comment toggle, collaborate handshake
+- **Search + filter** — by keyword, tag, or sort order
+- **Compact project cards** — title, description, status badge, tech stack, like/member counts
+- **Project detail page** — full project view with description, team, comments, and collaboration actions
 
 ###  Collaboration
 - **Join requests** — send a note with your request; owner sees all incoming in a dedicated view

@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import CompactProjectCard from "../components/CompactProjectCard";
-import TrendingCarousel from "../components/TrendingCarousel";
 import FeedRightPanel from "../components/FeedRightPanel";
 import RequestModal from "../components/RequestModal";
 import { toast } from "../components/Toast";
@@ -20,7 +19,6 @@ import {
 } from "lucide-react";
 
 const PAGE_LIMIT = 12;
-const TRENDING_LIMIT = 8;
 const SEARCH_DEBOUNCE = 350;
 
 function filterParams() {
@@ -93,7 +91,6 @@ export default function Feed() {
 
   const [teamsRefreshKey, setTeamsRefreshKey] = useState(0);
   const [projects, setProjects] = useState([]);
-  const [trendingProjects, setTrendingProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
@@ -150,15 +147,6 @@ export default function Feed() {
     }
   }, [fetchProjects, buildLikedSet]);
 
-  const fetchTrending = useCallback(async () => {
-    try {
-      const data = await getFeedProjects({ page: 1, limit: TRENDING_LIMIT, sort: "trending" });
-      setTrendingProjects(data.projects);
-    } catch {
-      // silently fail
-    }
-  }, []);
-
   const focusSearchInput = useCallback(() => {
     const input = document.querySelector('.feed-search input');
     input?.focus?.();
@@ -191,7 +179,6 @@ export default function Feed() {
 
   useEffect(() => {
     loadInitialProjects("");
-    fetchTrending();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -285,18 +272,6 @@ export default function Feed() {
             : p,
         ),
       );
-      setTrendingProjects((prev) =>
-        prev.map((p) =>
-          p._id === projectId
-            ? {
-                ...p,
-                likes: wasLiked
-                  ? p.likes.filter((l) => l.toString() !== userId)
-                  : [...p.likes, userId],
-              }
-            : p,
-        ),
-      );
     } catch (err) {
       toast(err.message, "error");
     } finally {
@@ -326,8 +301,6 @@ export default function Feed() {
     loadInitialProjects(searchQuery);
     setTeamsRefreshKey((k) => k + 1);
   }, [loadInitialProjects, searchQuery]);
-
-  const showTrending = trendingProjects.length > 0 && !searchQuery;
 
   return (
     <>
@@ -387,15 +360,6 @@ export default function Feed() {
                   <span className="feed-collab-toggle-text">Only show projects accepting collaborators</span>
                 </label>
               </div>
-
-              {showTrending && (
-                <TrendingCarousel
-                  projects={trendingProjects}
-                  onLike={handleLike}
-                  onRequest={(project) => setReqModal({ open: true, project })}
-                  likedIds={likedIds}
-                />
-              )}
 
               {loading ? (
                 <div className="feed-loading">

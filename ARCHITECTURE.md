@@ -618,15 +618,11 @@ document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
     </CollaborationRequestsView>
 
     <Feed Header>
-    <Filter Tabs>
     <Collab Toggle (checkbox: "Only show accepting collaborators")>
-    <Trending Section>
     <Main Cards>
-      <ProjectCard>
-        <feed-card-actions>
-        <ProjectCard Actions>
-        <CommentSection>
-      </ProjectCard>
+      <CompactProjectCard>
+        Title + Description + Status Badge + Tech Tags + Like/Member counts
+      </CompactProjectCard>
   </div>
 
   <FeedRightPanel>
@@ -647,11 +643,18 @@ document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
 
 ### 5.7 Key Components
 
+#### CompactProjectCard
+- Compact vertical card for the feed list.
+- Shows: avatar + username + status badge, title (1-line clamp), description (2-line clamp), tech tags (max 3), like count, member count.
+- Entire card is clickable → navigates to `/dashboard/project/:projectId`.
+
+#### ProjectDetail
+- Full project detail page at `/dashboard/project/:projectId`.
+- Shows: back button, owner info, title, full description, gradient image, all tech tags, collaboration status, looking-for roles, members list, like/comment/view actions, bookmark, and CommentSection.
+
 #### ProjectCard
-- **Two modes**: `compact` (horizontal trending card) and full `feed` (vertical card).
-- **Feed mode**: avatar + user info + status badge (planning/active/completed) + collaboration badge → title → description → lookingFor tags → tech stack → thumbnail → actions → CommentSection.
-- Engagement: like, bookmark, comment, collaborate.
-- Collaboration badge: "👥 Looking for Collaborators" when `isOpenForCollaboration === true`, "🔒 Team Full" otherwise.
+- Used in `ProjectsList` dashboard view.
+- Full card with avatar + user info + status badge + collaboration badge + title + description + lookingFor tags + tech stack + actions + CommentSection.
 
 #### CommentSection
 - Trigger: "N comments" toggles open/closed.
@@ -690,7 +693,7 @@ document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
 | `AuthContext` | `user`, `token`, `loading` |
 | `ChatContext` | `chatOpen`, `chatProjectId`, `chatProjectTitle` |
 | `SocketContext` | `connected`, `onlineUsers`, socket event helpers |
-| `Feed` | `projects[]`, `trendingProjects[]`, `page`, `hasMore`, `likedIds`, `savedIds`, `activeFilter`, `searchQuery`, `feedView`, `openForCollaborationOnly` |
+| `Feed` | `projects[]`, `page`, `hasMore`, `likedIds`, `searchQuery`, `feedView`, `openForCollaborationOnly` |
 | `CommentSection` | `text`, `open` |
 | `RequestModal` | `note` (local) |
 | `CollaborationRequestsView` | `incoming[]`, `outgoing[]`, `activeTab`, `loading`, `actionLoading` |
@@ -1672,7 +1675,7 @@ npx vitest
 | **1,000 users** | Feed query latency | Aggregation pipeline with `$lookup` on every page load — no indexes |
 | **5,000 users** | MongoDB connection pool exhaustion | Default Mongoose pool size (100) may be hit |
 | **10,000 users** | Server response degradation | Single Express thread blocks on CPU-heavy operations |
-| **50,000 users** | Feed becomes unusable | Unpaginated trending query, no caching, no CDN |
+| **50,000 users** | Feed becomes unusable | No caching, no CDN |
 | **100,000 users** | Backend crashes under load | No horizontal scaling, no Redis cache |
 
 ### 16.2 Bottlenecks by Component
