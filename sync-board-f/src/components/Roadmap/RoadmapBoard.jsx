@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { CheckCircle, Layers, TrendingUp } from 'lucide-react';
 import { toast } from '../Toast';
@@ -31,10 +31,6 @@ export default function RoadmapBoard({ project, tasks, onTasksChange }) {
       activationConstraint: { distance: 5 },
     })
   );
-
-  useEffect(() => {
-    setLocalTasks(tasks || []);
-  }, [tasks]);
 
   const getTasksByStatus = useCallback(
     (status) => localTasks.filter((t) => t.status === status).sort((a, b) => a.order - b.order),
@@ -78,7 +74,7 @@ export default function RoadmapBoard({ project, tasks, onTasksChange }) {
 
     try {
       await updateTaskStatus(token, taskId, { status: newStatus, order: newOrder });
-    } catch (err) {
+    } catch {
       // Rollback
       setLocalTasks(previousTasks);
       toast.error('Failed to move task');
@@ -168,12 +164,13 @@ export default function RoadmapBoard({ project, tasks, onTasksChange }) {
 
         <DragOverlay>
           {activeTask ? (
-            <RoadmapTaskCard task={activeTask} onClick={() => {}} isOwner={isOwner} />
+            <RoadmapTaskCard task={activeTask} onClick={() => {}} />
           ) : null}
         </DragOverlay>
       </DndContext>
 
       <CreateTaskModal
+        key={createModal.open ? 'open' : 'closed'}
         isOpen={createModal.open}
         onClose={() => setCreateModal({ open: false, status: 'backlog' })}
         onSubmit={handleCreateTask}
@@ -182,6 +179,7 @@ export default function RoadmapBoard({ project, tasks, onTasksChange }) {
       />
 
       <EditTaskModal
+        key={editModal.task?._id || 'new'}
         task={editModal.task}
         isOpen={editModal.open}
         onClose={() => setEditModal({ open: false, task: null })}

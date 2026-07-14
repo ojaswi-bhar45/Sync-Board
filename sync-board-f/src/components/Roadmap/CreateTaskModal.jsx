@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, Tag, Calendar, User, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import { X, Tag, Calendar, User } from 'lucide-react';
 
 const PRIORITY_OPTIONS = [
   { value: 'low', label: 'Low', color: '#4ade80' },
@@ -17,18 +17,6 @@ export default function CreateTaskModal({ isOpen, onClose, onSubmit, members, de
   const [assignedTo, setAssignedTo] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      setTitle('');
-      setDescription('');
-      setPriority('medium');
-      setLabels([]);
-      setLabelInput('');
-      setAssignedTo('');
-      setDueDate('');
-    }
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -62,7 +50,7 @@ export default function CreateTaskModal({ isOpen, onClose, onSubmit, members, de
         status: defaultStatus,
       });
       onClose();
-    } catch (err) {
+    } catch {
       // Error handled by parent
     } finally {
       setLoading(false);

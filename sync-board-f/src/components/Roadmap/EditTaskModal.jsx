@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X, Tag, Calendar, User, Trash2 } from 'lucide-react';
 
 const PRIORITY_OPTIONS = [
@@ -9,25 +9,14 @@ const PRIORITY_OPTIONS = [
 ];
 
 export default function EditTaskModal({ task, isOpen, onClose, onSubmit, onDelete, members, isOwner }) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState('medium');
-  const [labels, setLabels] = useState([]);
+  const [title, setTitle] = useState(() => task?.title || '');
+  const [description, setDescription] = useState(() => task?.description || '');
+  const [priority, setPriority] = useState(() => task?.priority || 'medium');
+  const [labels, setLabels] = useState(() => task?.labels || []);
   const [labelInput, setLabelInput] = useState('');
-  const [assignedTo, setAssignedTo] = useState('');
-  const [dueDate, setDueDate] = useState('');
+  const [assignedTo, setAssignedTo] = useState(() => task?.assignedTo?._id || '');
+  const [dueDate, setDueDate] = useState(() => task?.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (task) {
-      setTitle(task.title || '');
-      setDescription(task.description || '');
-      setPriority(task.priority || 'medium');
-      setLabels(task.labels || []);
-      setAssignedTo(task.assignedTo?._id || '');
-      setDueDate(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '');
-    }
-  }, [task]);
 
   if (!isOpen || !task) return null;
 
@@ -60,7 +49,7 @@ export default function EditTaskModal({ task, isOpen, onClose, onSubmit, onDelet
         dueDate: dueDate || null,
       });
       onClose();
-    } catch (err) {
+    } catch {
       // Error handled by parent
     } finally {
       setLoading(false);
@@ -73,7 +62,7 @@ export default function EditTaskModal({ task, isOpen, onClose, onSubmit, onDelet
     try {
       await onDelete(task._id);
       onClose();
-    } catch (err) {
+    } catch {
       // Error handled by parent
     } finally {
       setLoading(false);

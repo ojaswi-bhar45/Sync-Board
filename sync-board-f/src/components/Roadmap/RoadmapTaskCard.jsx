@@ -1,5 +1,5 @@
 import { useDraggable } from '@dnd-kit/core';
-import { Calendar, User } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 
 const PRIORITY_CONFIG = {
   urgent: { color: '#ef4444', label: 'Urgent' },
@@ -8,7 +8,7 @@ const PRIORITY_CONFIG = {
   low: { color: '#4ade80', label: 'Low' },
 };
 
-export default function RoadmapTaskCard({ task, onClick, isOwner }) {
+export default function RoadmapTaskCard({ task, onClick }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task._id,
     data: { task },
