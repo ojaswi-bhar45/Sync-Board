@@ -17,6 +17,7 @@ Sync Board is a developer collaboration platform where users can discover projec
 | **Routing** | react-router-dom 7 |
 | **Icons** | lucide-react |
 | **Styling** | Tailwind CSS 4 + CSS custom properties (~4000 lines) |
+| **Drag & Drop** | @dnd-kit/core + @dnd-kit/sortable (Kanban board) |
 | **Real-time** | Socket.IO 4 (WebSocket chat + typing indicators) |
 
 ### Key Architectural Decisions
@@ -29,6 +30,7 @@ Sync Board is a developer collaboration platform where users can discover projec
 | `/api/v1` prefix | Allows versioning the API without breaking existing clients |
 | Vite proxy in dev | Eliminates CORS issues during development; frontend never knows backend URL |
 | Socket.IO for real-time chat | WebSocket for instant message delivery + typing indicators + online presence |
+| Drag-and-drop via @dnd-kit | Lightweight, maintained library over react-beautiful-dnd; supports column reordering and within-column sorting |
 
 ---
 
@@ -58,10 +60,10 @@ Sync Board is a developer collaboration platform where users can discover projec
                                │  └───────┘ └──────────┘ └──────────┘ └──────────┘          │
                                │  ┌──────────────────────────────────────────────────┐      │
                                │  │              /api/v1 (routes/index.js)           │      │
-                               │  │  ┌────────┐ ┌──────────┐ ┌──────┐ ┌──────────┐ │      │
-                               │  │  │  Auth  │ │ Projects │ │ Chat │ │  Canvas  │ │      │
-                               │  │  │ Routes │ │ + Feed   │ │Routes│ │  Routes  │ │      │
-                               │  │  └────┬───┘ └────┬─────┘ └──┬───┘ └────┬─────┘ │      │
+                                │  │  ┌────────┐ ┌──────────┐ ┌──────┐ ┌──────────┐ ┌──────┐│      │
+                                │  │  │  Auth  │ │ Projects │ │ Chat │ │  Canvas  │ │Tasks ││      │
+                                │  │  │ Routes │ │ + Feed   │ │Routes│ │  Routes  │ │Routes││      │
+                                │  │  └────┬───┘ └────┬─────┘ └──┬───┘ └────┬─────┘ └──┬───┘│      │
                                │  │       │           │          │           │       │      │
                                │  │       └── JWT Auth Middleware ────────────┘       │      │
                                │  └──────────────────────────────────────────────────┘      │
@@ -108,13 +110,15 @@ sync-board/                          # Root (monorepo)
 │   │   ├── project.js               # Dashboard project CRUD
 │   │   ├── chat.js                  # Per-project messaging
 │   │   ├── canvas.js                # Whiteboard element CRUD
+│   │   ├── tasks.js                 # Task CRUD + status updates (Kanban)
 │   │   └── profile.js               # GET / and PATCH /edit
 │   ├── models/
 │   │   ├── User.js                  # username, email, password, optional profile fields
 │   │   ├── Project.js               # title, description, techStack, likes, comments,
 │   │   │                            #   members, joinRequest[], status, visibility
 │   │   ├── Message.js               # Chat message per project
-│   │   └── CanvasElement.js         # Whiteboard elements (type, position, content)
+│   │   ├── CanvasElement.js         # Whiteboard elements (type, position, content)
+│   │   └── Task.js                  # Kanban task (title, status, priority, labels, assignee)
 │   ├── utils/
 │   │   └── response.js               # Standardized { data, message } / { error, code } helpers
 │   ├── socket.js                    # Socket.IO server (JWT auth, chat rooms, typing, presence)
@@ -141,8 +145,8 @@ sync-board/                          # Root (monorepo)
 │       ├── main.jsx                 # Entry, BrowserRouter, dark theme default
 │       ├── App.jsx                  # Route definitions
 │       ├── App.css                  # Empty (all styles in index.css)
-│       ├── index.css                # All styles (~4000 lines), CSS custom properties
-│       ├── api.js                   # API client functions (including updateProjectSettings)
+│       ├── index.css                # All styles (~7500 lines), CSS custom properties
+│       ├── api.js                   # API client functions (projects, chat, canvas, tasks)
 │       ├── context/
 │       │   ├── AuthContext.jsx      # Global auth state (user, token, login, logout, updateUser)
 │       │   ├── ChatContext.jsx      # Global chat state (chatOpen, chatProjectId, startChat, closeChat)
@@ -157,7 +161,7 @@ sync-board/                          # Root (monorepo)
 │       │   ├── Dashboard.jsx        # Dashboard shell with route-based child views
 │       │   ├── Sidebar.jsx          # Navigation sidebar for dashboard routes
 │       │   ├── ProjectsList.jsx     # Glass-card project grid with filter/search
-│       │   ├── Workspace.jsx        # Project detail + canvas
+│       │   ├── Workspace.jsx        # Project detail + canvas + roadmap tabs
 │       │   ├── ChatPanel.jsx        # Per-project + global chat panel
 │       │   ├── Profile.jsx          # Edit profile with completeness tracker
 │       │   ├── ProjectCard.jsx      # Feed mode + compact mode
@@ -174,6 +178,13 @@ sync-board/                          # Root (monorepo)
 │       │       ├── Canvas.jsx       # Whiteboard area, draggable elements, zoom
 │       │       ├── IdeaCard.jsx     # Draggable idea card
 │       │       └── StickyNote.jsx   # Draggable sticky note
+│       │   └── Roadmap/
+│       │       ├── index.js         # Barrel export
+│       │       ├── RoadmapBoard.jsx # Kanban board with DnD context, stats, task state
+│       │       ├── RoadmapColumn.jsx # Single droppable column
+│       │       ├── RoadmapTaskCard.jsx # Draggable task card
+│       │       ├── CreateTaskModal.jsx # Task creation form
+│       │       └── EditTaskModal.jsx  # Task edit form with delete
 │       ├── hooks/
 │       │   ├── useTheme.js          # Dark/light theme toggle (buggy)
 │       │   └── useDraggable.js      # Pointer-based drag behavior
@@ -215,6 +226,7 @@ router.use("/projects", require("./project"));       // CRUD: dashboard projects
 router.use("/projects", require("./feed"));          // Feed, likes, comments, requests
 router.use("/chat", require("./chat"));              // Per-project messaging
 router.use("/canvas", require("./canvas"));          // Whiteboard elements
+router.use("/tasks", require("./tasks"));             // Task CRUD + status updates (Kanban)
 router.use("/profile", require("./profile"));        // GET, PATCH
 module.exports = router;
 ```
@@ -416,6 +428,9 @@ Socket.IO runs on the same HTTP server, authenticated via JWT in the handshake `
 | `chat:stop-typing` | `{ userId }` | User stopped typing |
 | `user-online` | `{ userId, username }` | User joined the project room |
 | `user-offline` | `{ userId }` | User left or disconnected |
+| `task:created` | populated `Task` document | New task created (broadcast to project room) |
+| `task:updated` | populated `Task` document | Task fields or status changed (broadcast to project room) |
+| `task:deleted` | `{ taskId, projectId }` | Task deleted (broadcast to project room) |
 
 #### GET /api/v1/canvas/:projectId
 
@@ -440,6 +455,50 @@ Socket.IO runs on the same HTTP server, authenticated via JWT in the handshake `
 | Auth | Response |
 |------|----------|
 | Required | `{ message }` |
+
+#### GET /api/v1/tasks/:projectId
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required (owner + members) |
+| **Populates** | `assignedTo` (username, email), `createdBy` (username, email) |
+| **Response** | `{ tasks[] }` — all tasks for the project, sorted by order |
+
+#### POST /api/v1/tasks
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required (owner only) |
+| **Body** | `{ projectId, title, description?, status?, priority?, labels?, assignedTo?, dueDate? }` |
+| **Validation** | `createTask` Joi schema — title required, max 200 chars |
+| **Order** | Auto-computed as `MAX(order) + 1` within the target status column |
+| **Response** | `{ task }` — populated task; also emits `task:created` via Socket.IO |
+
+#### PATCH /api/v1/tasks/:id
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required (owner only) |
+| **Body** | Partial fields: `title`, `description`, `priority`, `labels`, `assignedTo`, `dueDate` |
+| **Validation** | `editTask` Joi schema — all fields optional |
+| **Response** | `{ task }` — populated task; also emits `task:updated` via Socket.IO |
+
+#### PATCH /api/v1/tasks/:id/status
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required (owner + members) |
+| **Body** | `{ status, order }` |
+| **Validation** | `updateTaskStatus` Joi schema — status enum, order number required |
+| **Purpose** | Drag-and-drop: moves task to a new column at a specific position |
+| **Response** | `{ task }` — populated task; also emits `task:updated` via Socket.IO |
+
+#### DELETE /api/v1/tasks/:id
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required (owner only) |
+| **Response** | `{ message }`; also emits `task:deleted` via Socket.IO |
 
 ### 4.6 Database Schemas
 
@@ -515,6 +574,24 @@ Socket.IO runs on the same HTTP server, authenticated via JWT in the handshake `
   progress:  { type: Number, default: 0 },
   createdBy: { type: ObjectId, ref: "User", required: true },
   createdAt: { type: Date, default: Date.now }
+}
+```
+
+#### Task Model
+
+```javascript
+{
+  projectId:  { type: ObjectId, ref: "Project", required: true, index: true },
+  title:      { type: String, required: true, maxlength: 200 },
+  description:{ type: String, default: "", maxlength: 2000 },
+  status:     { type: String, enum: ["backlog","todo","progress","review","done"], default: "backlog" },
+  priority:   { type: String, enum: ["low","medium","high","urgent"], default: "medium" },
+  labels:     [{ type: String }],
+  assignedTo: { type: ObjectId, ref: "User", default: null },
+  createdBy:  { type: ObjectId, ref: "User", required: true },
+  dueDate:    { type: Date, default: null },
+  order:      { type: Number, default: 0 },
+  timestamps: true
 }
 ```
 
@@ -681,9 +758,10 @@ document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
 - Gradient save button with spinner.
 
 #### Workspace
-- Canvas + chat for a single project.
-- **Owner controls** (visible only to project owner): status selector (planning/active/completed), collaboration toggle (open/closed), lookingFor role management (add/remove roles).
-- Non-owner view: read-only status badge, collaboration badge, lookingFor tags.
+- Canvas + chat + roadmap for a single project.
+- **Tab system** switches between Whiteboard (canvas + toolbar) and Roadmap (5-column Kanban board). Chat remains floating across both tabs.
+- **Owner controls** (visible only to project owner): status selector (planning/active/completed), collaboration toggle (open/closed), lookingFor role management (add/remove roles), task creation/editing/deletion on roadmap.
+- Non-owner view: read-only status badge, collaboration badge, lookingFor tags; can move tasks on roadmap.
 - Uses `updateProjectSettings(token, projectId, { status, isOpenForCollaboration, lookingFor })` for inline settings updates.
 
 ### 5.8 State Management
@@ -699,7 +777,7 @@ document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
 | `CollaborationRequestsView` | `incoming[]`, `outgoing[]`, `activeTab`, `loading`, `actionLoading` |
 | `ProjectsList` | `teams[]`, `loading`, `filter`, `searchQuery` |
 | `Profile` | `profile`, `loading`, `saving` |
-| `Workspace` | `projectStatus`, `projectOpenForCollab`, `projectLookingFor`, `editingStatus`, `editingLookingFor`, `lookingForInput`, `activeTool`, `elements` |
+| `Workspace` | `activeTab`, `projectStatus`, `projectOpenForCollab`, `projectLookingFor`, `editingStatus`, `editingLookingFor`, `lookingForInput`, `activeTool`, `elements`, `tasks[]`, `loading` |
 | `useTheme` | `theme` ("dark"/"light") persisted to localStorage |
 | `useDraggable` | `position` ({ top, left }) |
 
@@ -718,7 +796,7 @@ document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
 
 ### 5.10 Styling Architecture
 
-Styles use **Tailwind CSS 4** (via `@tailwindcss/vite` plugin) alongside a **custom CSS file** (`src/index.css`, ~4700 lines).
+Styles use **Tailwind CSS 4** (via `@tailwindcss/vite` plugin) alongside a **custom CSS file** (`src/index.css`, ~7500 lines).
 
 - Tailwind provides utility classes for layout, spacing, colors, and responsive design.
 - Custom CSS handles glassmorphism effects (`backdrop-filter: blur`), CSS custom property theming, animations/keyframes, and feed-specific component styles.
@@ -979,6 +1057,7 @@ Mongoose implicitly creates an index on `_id` for every model and a **unique ind
 | `projects` | `members` | Single | My teams query |
 | `messages` | `projectId`, `createdAt` | Compound | Chat history |
 | `cancaselements` | `projectId` | Single | Canvas load |
+| `tasks` | `projectId`, `status`, `order` | Compound | Task board queries: column load + sort |
 
 ### 8.3 Index Creation Code
 
@@ -995,6 +1074,9 @@ messageSchema.index({ projectId: 1, createdAt: 1 });
 
 // models/CanvasElement.js
 canvasElementSchema.index({ projectId: 1 });
+
+// models/Task.js
+taskSchema.index({ projectId: 1, status: 1, order: 1 });
 ```
 
 ### 8.4 Index Considerations
@@ -1804,6 +1886,7 @@ All P0 issues have been resolved: password hashes are stripped from API response
 | 15 | Docker setup — Dockerfiles + docker-compose.yml |
 | 16 | Deploy to production — Vercel + Render + Atlas |
 | 17 | Socket.IO real-time chat — WebSocket message delivery, typing indicators, online presence |
+| 27 | Project Roadmap (Kanban Board) — 5-column drag-and-drop board with @dnd-kit, task CRUD, optimistic updates, WebSocket events, owner/member permissions |
 
 ### Short-term (Weeks 1-4) —  
 
@@ -1846,3 +1929,4 @@ All P0 issues have been resolved: password hashes are stripped from API response
 | 2026-07-02 | System | Updated to reflect current codebase: added Socket.IO, Tailwind CSS 4, Joi validation, rate limiting, MongoDB retry logic, useTheme fix, self-request guard. Corrected error handler behavior. Removed fixed issues from Known Issues and Roadmap. |
 | 2026-07-02 | System | Phase 1 — conditional DNS override, simplified MongoDB connect with .catch() exit |
 | 2026-07-02 | System | Phase 2 — standardized API response format (`{ data, message }` / `{ error, code }`), added `utils/response.js` helper, error handler maps Mongoose errors to codes, all catch blocks sanitized |
+| 2026-07-14 | System | Added Project Roadmap (Kanban Board): Task model, task routes, @dnd-kit DnD, workspace tab system, roadmap components, CSS styles |

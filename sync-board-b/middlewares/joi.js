@@ -152,6 +152,38 @@ const schemas = {
     linkedInProfile: Joi.string().max(500).optional().allow(null),
     githubProfile: Joi.string().max(500).optional().allow(null),
   }),
+  createTask: Joi.object({
+    projectId: Joi.string().hex().length(24).required(),
+    title: Joi.string().min(1).max(200).required(),
+    description: Joi.string().max(2000).optional().allow("").default(""),
+    status: Joi.string()
+      .valid("backlog", "todo", "progress", "review", "done")
+      .optional()
+      .default("backlog"),
+    priority: Joi.string()
+      .valid("low", "medium", "high", "urgent")
+      .optional()
+      .default("medium"),
+    labels: Joi.array().items(Joi.string().trim().max(30)).optional().default([]),
+    assignedTo: Joi.string().hex().length(24).optional().allow(null),
+    dueDate: Joi.date().optional().allow(null),
+  }),
+  editTask: Joi.object({
+    title: Joi.string().min(1).max(200).optional(),
+    description: Joi.string().max(2000).optional().allow(""),
+    priority: Joi.string()
+      .valid("low", "medium", "high", "urgent")
+      .optional(),
+    labels: Joi.array().items(Joi.string().trim().max(30)).optional(),
+    assignedTo: Joi.string().hex().length(24).optional().allow(null),
+    dueDate: Joi.date().optional().allow(null),
+  }),
+  updateTaskStatus: Joi.object({
+    status: Joi.string()
+      .valid("backlog", "todo", "progress", "review", "done")
+      .required(),
+    order: Joi.number().required(),
+  }),
 };
 
 module.exports = { validate, schemas };

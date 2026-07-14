@@ -4,9 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import Toolbar from './Toolbar';
 import Canvas from './Whiteboard/Canvas';
 import ChatPanel from './ChatPanel';
-import { getCanvasElements, createCanvasElement, updateCanvasElement, deleteCanvasElement, updateProjectSettings } from '../api';
+import { RoadmapBoard } from './Roadmap';
+import { getCanvasElements, createCanvasElement, updateCanvasElement, deleteCanvasElement, updateProjectSettings, getTasks } from '../api';
 import { toast } from './Toast';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, LayoutGrid, Kanban } from 'lucide-react';
 
 const STATUS_LABELS = {
   planning: "Planning",
@@ -19,8 +20,10 @@ export default function Workspace() {
   const location = useLocation();
   const project = location.state?.project;
   const { token, user } = useAuth();
+  const [activeTab, setActiveTab] = useState('whiteboard');
   const [activeTool, setActiveTool] = useState('pointer');
   const [elements, setElements] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingLookingFor, setEditingLookingFor] = useState(false);
   const [lookingForInput, setLookingForInput] = useState("");
@@ -38,8 +41,14 @@ export default function Workspace() {
     (async () => {
       setLoading(true);
       try {
-        const data = await getCanvasElements(token, projectId);
-        if (!cancelled) setElements(data.elements || []);
+        const [canvasData, tasksData] = await Promise.all([
+          getCanvasElements(token, projectId),
+          getTasks(token, projectId),
+        ]);
+        if (!cancelled) {
+          setElements(canvasData.elements || []);
+          setTasks(tasksData.tasks || []);
+        }
       } catch (err) {
         if (!cancelled) toast(err.message, 'error');
       } finally {
@@ -228,14 +237,46 @@ export default function Workspace() {
         </div>
       )}
 
-      <Toolbar activeTool={activeTool} setActiveTool={setActiveTool} onAddSticky={handleAddSticky} isAdmin={isAdmin} />
-      {loading ? (
-        <div className="flex items-center justify-center h-full">
-          <Loader2 size={36} className="feed-spinner" />
-        </div>
-      ) : (
-        <Canvas elements={elements} onDelete={handleDelete} onUpdate={handleUpdate} />
+      <div className="workspace-tabs">
+        <button
+          className={`workspace-tab ${activeTab === 'whiteboard' ? 'active' : ''}`}
+          onClick={() => setActiveTab('whiteboard')}
+        >
+          <LayoutGrid size={16} />
+          <span>Whiteboard</span>
+        </button>
+        <button
+          className={`workspace-tab ${activeTab === 'roadmap' ? 'active' : ''}`}
+          onClick={() => setActiveTab('roadmap')}
+        >
+          <Kanban size={16} />
+          <span>Roadmap</span>
+        </button>
+      </div>
+
+      {activeTab === 'whiteboard' && (
+        <>
+          <Toolbar activeTool={activeTool} setActiveTool={setActiveTool} onAddSticky={handleAddSticky} isAdmin={isAdmin} />
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 size={36} className="feed-spinner" />
+            </div>
+          ) : (
+            <Canvas elements={elements} onDelete={handleDelete} onUpdate={handleUpdate} />
+          )}
+        </>
       )}
+
+      {activeTab === 'roadmap' && (
+        loading ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 size={36} className="feed-spinner" />
+          </div>
+        ) : (
+          <RoadmapBoard project={project} tasks={tasks} onTasksChange={() => getTasks(token, projectId).then(d => setTasks(d.tasks || []))} />
+        )
+      )}
+
       <ChatPanel projectId={projectId} projectName={project.title} isAdmin={isAdmin} />
     </>
   );

@@ -65,6 +65,14 @@ No more cold DMs. No more abandoned side projects. Just a board to sync on.
 - **Idea cards** — badges, progress bars, draggable layout (persisted to MongoDB)
 - **Zoom controls** — zoom in/out/reset canvas view
 
+###  Roadmap / Kanban Board
+- **5-column Kanban board** — Backlog, Todo, In Progress, Review, Done
+- **Drag-and-drop** — move tasks between columns via @dnd-kit with optimistic UI updates
+- **Task CRUD** — create, edit, delete tasks with title, description, priority, labels, assignee, due date
+- **Board stats** — total tasks, completed count, completion percentage
+- **Owner/member permissions** — owner creates/edits/deletes; members can move tasks
+- **Real-time sync** — WebSocket events broadcast task changes to all project members
+
 ###  UX / Polish
 - **Dark theme default** — CSS custom properties with light/dark toggle (`useTheme` hook)
 - **Glassmorphism design** — `backdrop-filter: blur`, gradient accents, hover lift effects
@@ -83,6 +91,7 @@ No more cold DMs. No more abandoned side projects. Just a board to sync on.
 | **Database**       | MongoDB Atlas (MongoDB 7) + Mongoose 9 ODM                                 |
 | **Authentication** | bcryptjs (password hashing) + jsonwebtoken (stateless JWT)                 |
 | **Icons**          | lucide-react                                                               |
+| **Drag & Drop**    | @dnd-kit/core + @dnd-kit/sortable                                          |
 | **Dev Tools**      | nodemon (backend hot-reload), ESLint 10 (flat config), Vite HMR            |
 
 ---
@@ -215,6 +224,16 @@ All routes are mounted under `/api/v1`. Auth is via `Authorization: Bearer <toke
 | PATCH  | `/canvas/:projectId/:elementId`   | Yes  | Update an element          |
 | DELETE | `/canvas/:projectId/:elementId`   | Yes  | Delete an element          |
 
+### Tasks (Roadmap)
+
+| Method | Route                  | Auth          | Description                          |
+|--------|------------------------|---------------|--------------------------------------|
+| GET    | `/tasks/:projectId`    | Owner+Member  | Get all tasks for a project          |
+| POST   | `/tasks`               | Owner only    | Create a task                        |
+| PATCH  | `/tasks/:id`           | Owner only    | Update task fields (title, etc.)     |
+| PATCH  | `/tasks/:id/status`    | Owner+Member  | Move task to new column/status       |
+| DELETE | `/tasks/:id`           | Owner only    | Delete a task                        |
+
 ### Profile
 
 | Method | Route            | Auth | Description               |
@@ -239,12 +258,14 @@ sync-board/
 │   │   ├── project.js               # Dashboard project CRUD
 │   │   ├── chat.js                  # Per-project messaging
 │   │   ├── canvas.js                # Whiteboard element CRUD
+│   │   ├── tasks.js                 # Task CRUD + status updates (Kanban)
 │   │   └── profile.js               # GET / and PATCH /edit
 │   ├── models/
 │   │   ├── User.js                  # username, email, password, profile fields
 │   │   ├── Project.js               # title, techStack, likes, comments, members, requests
 │   │   ├── Message.js               # chat messages per project
-│   │   └── CanvasElement.js         # whiteboard elements
+│   │   ├── CanvasElement.js         # whiteboard elements
+│   │   └── Task.js                  # Kanban task (title, status, priority, labels, assignee)
 │   ├── middlewares/
 │   │   ├── auth.js                  # JWT verification
 │   │   └── errorHandler.js          # Global error handler
@@ -256,7 +277,7 @@ sync-board/
 │   │   ├── App.jsx                  # Route definitions (Login, Signup, Dashboard routes)
 │   │   ├── api.js                   # API client — every endpoint as a named export
 │   │   ├── pages/                   # Login, Signup, Feed, MyFeed, CreateProject
-│   │   ├── components/              # ProjectCard, ChatPanel, Workspace, Profile, MyFeed + Whiteboard/
+│   │   ├── components/              # ProjectCard, ChatPanel, Workspace, Profile, MyFeed + Whiteboard/ + Roadmap/
 │   │   ├── context/                 # AuthContext (JWT state) + ChatContext (global chat)
 │   │   ├── hooks/                   # useTheme, useDraggable
 │   │   └── index.css                # ~4700 lines, CSS custom properties, glassmorphism
@@ -269,7 +290,7 @@ sync-board/
 
 ##  Architecture
 
-Sync Board follows a **client-server architecture** — a React SPA communicates with a stateless Express REST API over HTTP. The backend is organized as a flat route-layer with JWT middleware, Mongoose models, and no controller abstraction. The frontend uses React Router 7 for route-based navigation, a global `AuthContext` for JWT state management, and a collection of functional components with local state (no Redux/Zustand).
+Sync Board follows a **client-server architecture** — a React SPA communicates with a stateless Express REST API over HTTP. The backend is organized as a flat route-layer with JWT middleware, Mongoose models, and no controller abstraction. The frontend uses React Router 7 for route-based navigation, a global `AuthContext` for JWT state management, and a collection of functional components with local state (no Redux/Zustand). The workspace uses a tab system to switch between the Whiteboard (canvas + toolbar) and the Roadmap (Kanban board with drag-and-drop).
 
 All API routes are mounted under a single `/api/v1` prefix via `routes/index.js`. The Vite dev server proxies `/api/*` requests to the Express backend, so the frontend never needs to know the backend URL during development. In production, the frontend reads `VITE_API_BASE_URL` from environment and hits the deployed backend directly.
 
@@ -282,10 +303,9 @@ All API routes are mounted under a single `/api/v1` prefix via `routes/index.js`
 | Severity | Issue |
 |----------|-------|
 |  High | Some catch blocks still expose raw error messages (MongoDB errors, stack traces) |
-|  Medium | No input validation library (email format, password strength) |
-|  Medium | No rate limiting on auth endpoints — brute force possible |
-|  Medium | No MongoDB connection retry — server starts even if DB is unreachable |
-|  Low | Self-request allowed — owner can send join request to own project |
+|  Medium | No input sanitization (XSS/NoSQL injection possible via user input) |
+|  Low | No email verification — anyone can sign up with any email |
+|  Low | No password reset flow — users cannot recover accounts |
 
 See [ARCHITECTURE.md — Known Issues](./ARCHITECTURE.md#7-known-issues--security-gaps) for the full list.
 
@@ -293,24 +313,35 @@ See [ARCHITECTURE.md — Known Issues](./ARCHITECTURE.md#7-known-issues--securit
 
 ##  Roadmap
 
+### Completed
+
+- Input validation library (Joi schemas on all routes)
+- Error message sanitization (global error handler)
+- MongoDB connection retry logic
+- Rate limiting on auth endpoints (express-rate-limit)
+- Consistent error response format `{ error, code }`
+- Prevent self-requests on join requests
+- Real-time chat via WebSocket (Socket.IO)
+- Project Roadmap / Kanban Board (5-column drag-and-drop with @dnd-kit)
+
 ### Short-term
 
-- Add input validation library (email regex, password strength, trimming)
-- Sanitize error messages in remaining catch blocks that expose raw errors
-- Add MongoDB connection retry logic
+- Add database indexes on Task model for board query performance
+- Write task route tests (Jest + Supertest)
 
 ### Medium-term
 
-- Rate limiting on `/auth/*` with `express-rate-limit`
-- Consistent error response format `{ error: string, code: string }`
-- Prevent self-requests on join requests
-- Real-time chat via WebSocket (Socket.IO)
+- Task due date notifications
+- Task activity history (who moved/edited what)
+- Collaboration notifications — notify owner when request is received
 
 ### Long-term
 
 - File/image upload for projects and comments
 - Team management with roles, permissions, and invites
 - Responsive mobile layout for feed and workspace views
+- Task templates for common project structures
+- Epic/Story/Task hierarchy for complex projects
 
 ---
 

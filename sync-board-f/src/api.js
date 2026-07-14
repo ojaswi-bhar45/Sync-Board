@@ -198,6 +198,44 @@ export function deleteCanvasElement(token, projectId, elementId) {
   }).then(handleResponse)
 }
 
+// ── Tasks (Roadmap) ──
+export function getTasks(token, projectId) {
+  return fetch(`${BASE}/api/v1/tasks/${projectId}`, {
+    headers: headers(token),
+  }).then(handleResponse)
+}
+
+export function createTask(token, data) {
+  return fetch(`${BASE}/api/v1/tasks`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handleResponse)
+}
+
+export function updateTask(token, taskId, data) {
+  return fetch(`${BASE}/api/v1/tasks/${taskId}`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handleResponse)
+}
+
+export function updateTaskStatus(token, taskId, data) {
+  return fetch(`${BASE}/api/v1/tasks/${taskId}/status`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handleResponse)
+}
+
+export function deleteTask(token, taskId) {
+  return fetch(`${BASE}/api/v1/tasks/${taskId}`, {
+    method: 'DELETE',
+    headers: headers(token),
+  }).then(handleResponse)
+}
+
 // ── Profile ──
 export function getProfile(token) {
   return fetch(`${BASE}/api/v1/profile/`, {
@@ -242,5 +280,6 @@ export const api = {
     updateElement: updateCanvasElement,
     deleteElement: deleteCanvasElement,
   },
+  tasks: { get: getTasks, create: createTask, update: updateTask, updateStatus: updateTaskStatus, delete: deleteTask },
   profile: { get: getProfile, update: updateProfile },
 }
