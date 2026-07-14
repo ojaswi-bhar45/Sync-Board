@@ -3,6 +3,7 @@ const router = require("express").Router();
 router.use("/auth", require("./authRoutes"));
 router.use("/projects", require("./project"));
 router.use("/projects", require("./feed"));
+router.use("/projects", require("./team"));
 router.use("/chat", require("./chat"));
 router.use("/canvas", require("./canvas"));
 router.use("/tasks", require("./tasks"));

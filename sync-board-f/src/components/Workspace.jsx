@@ -32,7 +32,9 @@ export default function Workspace() {
   const [projectOpenForCollab, setProjectOpenForCollab] = useState(project?.isOpenForCollaboration !== false);
   const [projectLookingFor, setProjectLookingFor] = useState(project?.lookingFor || []);
 
-  const isAdmin = project?.userId?._id === user?._id || project?.userId === user?._id;
+  const isOwner = project?.userId?._id === user?._id || project?.userId === user?._id;
+  const userPermission = project?.userPermission || (isOwner ? "owner" : "member");
+  const isAdmin = userPermission === "owner" || userPermission === "admin";
 
   useEffect(() => {
     if (!projectId || !token) return;
@@ -111,7 +113,7 @@ export default function Workspace() {
       <div className="workspace-header">
         <div className="workspace-header-left">
           <span className="workspace-project-name">{project.title}</span>
-          {isAdmin && <span className="text-xs text-indigo-400 ml-2">(Admin)</span>}
+          {isAdmin && <span className="text-xs text-indigo-400 ml-2">({userPermission === "owner" ? "Owner" : "Admin"})</span>}
         </div>
         <div className="workspace-header-right">
           <span className={`status-badge ${projectStatus}`}>

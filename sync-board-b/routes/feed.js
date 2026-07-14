@@ -3,6 +3,7 @@ const auth = require("../middlewares/auth");
 const router = require("express").Router();
 const { validate, schemas } = require("../middlewares/joi");
 const { success, error } = require("../utils/response");
+const { getMemberRecord } = require("../utils/permissions");
 
 const TAG_FILTERS = {
   ai: [/ai/i, /machine learning/i, /llm/i, /deep learning/i, /neural/i, /gpt/i, /chatgpt/i, /tensorflow/i, /pytorch/i],
@@ -75,7 +76,7 @@ router.get("/feed", async (req, res, next) => {
         {
           $lookup: {
             from: "users",
-            localField: "members",
+            localField: "members.userId",
             foreignField: "_id",
             as: "memberUsers",
           },
@@ -105,7 +106,29 @@ router.get("/feed", async (req, res, next) => {
                 },
               },
             },
-            members: "$memberUsers",
+            members: {
+              $map: {
+                input: "$members",
+                as: "m",
+                in: {
+                  userId: {
+                    $arrayElemAt: [
+                      {
+                        $filter: {
+                          input: "$memberUsers",
+                          as: "mu",
+                          cond: { $eq: ["$$mu._id", "$$m.userId"] },
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                  permission: "$$m.permission",
+                  teamRole: "$$m.teamRole",
+                  joinedAt: "$$m.joinedAt",
+                },
+              },
+            },
           },
         },
         {
@@ -228,7 +251,7 @@ router.post("/request/:id", auth, validate(schemas.joinRequest), async (req, res
       return error(res, "Already requested to join", "DUPLICATE_REQUEST", 400);
 
     const isMember = project.members.some(
-      (m) => m.toString() === req.user._id.toString(),
+      (m) => m.userId.toString() === req.user._id.toString(),
     );
     if (isMember)
       return error(res, "You are already a member", "ALREADY_MEMBER", 400);
@@ -250,7 +273,10 @@ router.post("/request/:id", auth, validate(schemas.joinRequest), async (req, res
 router.get("/incoming-requests", auth, async (req, res, next) => {
   try {
     const projects = await Project.find({
-      userId: req.user._id,
+      $or: [
+        { userId: req.user._id },
+        { "members.userId": req.user._id, "members.permission": "admin" },
+      ],
       "joinRequest.status": "pending",
     }).populate("joinRequest.user", "username email");
 
@@ -313,12 +339,14 @@ router.put("/request/:projectId/:requestId", auth, validate(schemas.updateReques
   try {
     const { status } = req.body;
 
-    const project = await Project.findOne({
-      _id: req.params.projectId,
-      userId: req.user._id,
-    });
+    const project = await Project.findById(req.params.projectId);
     if (!project)
       return error(res, "Project not found", "NOT_FOUND", 404);
+
+    const record = getMemberRecord(project, req.user._id);
+    if (!record || (record.permission !== "owner" && record.permission !== "admin")) {
+      return error(res, "Only the owner or admin can manage requests", "FORBIDDEN", 403);
+    }
 
     const request = project.joinRequest.id(req.params.requestId);
     if (!request)
@@ -328,10 +356,15 @@ router.put("/request/:projectId/:requestId", auth, validate(schemas.updateReques
 
     if (status === "accepted") {
       const isAlreadyMember = project.members.some(
-        (m) => m.toString() === request.user.toString(),
+        (m) => m.userId.toString() === request.user.toString(),
       );
       if (!isAlreadyMember) {
-        project.members.push(request.user);
+        project.members.push({
+          userId: request.user,
+          permission: "member",
+          teamRole: "other",
+          joinedAt: new Date(),
+        });
       }
     }
 
@@ -347,37 +380,26 @@ router.get("/my-teams", auth, async (req, res, next) => {
     const projects = await Project.find({
       $or: [
         { userId: req.user._id },
-        { members: req.user._id },
+        { "members.userId": req.user._id },
       ],
-    }).populate("userId", "username email")
-      .populate("members", "username");
+    }).populate("userId", "username email").populate("members.userId", "username email");
 
-    success(res, { teams: projects });
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.delete("/:id/members/:userId", auth, async (req, res, next) => {
-  try {
-    const project = await Project.findOne({
-      _id: req.params.id,
-      userId: req.user._id,
+    const teams = projects.map((project) => {
+      const record = getMemberRecord(project, req.user._id);
+      return {
+        _id: project._id,
+        title: project.title,
+        description: project.description,
+        userId: project.userId,
+        techStack: project.techStack,
+        status: project.status,
+        timestamp: project.timestamp,
+        members: project.members,
+        userPermission: record?.permission || "member",
+      };
     });
-    if (!project)
-      return error(res, "Project not found", "NOT_FOUND", 404);
 
-    if (req.params.userId === req.user._id.toString())
-      return error(res, "Cannot remove yourself as owner", "BAD_REQUEST", 400);
-
-    const idx = project.members.indexOf(req.params.userId);
-    if (idx === -1)
-      return error(res, "Member not found", "NOT_FOUND", 404);
-
-    project.members.splice(idx, 1);
-    await project.save();
-
-    success(res, { members: project.members }, "Member removed");
+    success(res, { teams });
   } catch (error) {
     next(error);
   }

@@ -51,8 +51,10 @@ const projectSchema = new mongoose.Schema({
 
   members: [
     {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+      permission: { type: String, enum: ["owner", "admin", "member"], default: "member" },
+      teamRole: { type: String, enum: ["frontend", "backend", "fullstack", "uiux", "devops", "qa", "ml", "mobile", "other"], default: "other" },
+      joinedAt: { type: Date, default: Date.now },
     },
   ],
 

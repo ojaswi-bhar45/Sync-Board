@@ -5,28 +5,48 @@ const Task = require("../models/Task");
 const Project = require("../models/Project");
 const { validate, schemas } = require("../middlewares/joi");
 const { success, error } = require("../utils/response");
+const { getMemberRecord } = require("../utils/permissions");
 
 async function requireMember(req, res, next) {
   try {
-    const project = await Project.findById(req.params.projectId);
+    const project = await Project.findById(req.params.projectId || req.body.projectId);
     if (!project) return error(res, "Project not found", "NOT_FOUND", 404);
 
-    const userId = req.user._id.toString();
-    const isOwner = project.userId.toString() === userId;
-    const isMember = project.members.some((m) => m.toString() === userId);
-
-    if (!isOwner && !isMember)
+    const record = getMemberRecord(project, req.user._id);
+    if (!record) {
       return error(res, "You are not a member of this project", "FORBIDDEN", 403);
+    }
 
     req.project = project;
-    req.isOwner = isOwner;
+    req.userPermission = record.permission;
     next();
   } catch (err) {
     next(err);
   }
 }
 
-// GET all tasks for a project
+async function requireTaskProject(req, res, next) {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) return error(res, "Task not found", "NOT_FOUND", 404);
+
+    const project = await Project.findById(task.projectId);
+    if (!project) return error(res, "Project not found", "NOT_FOUND", 404);
+
+    const record = getMemberRecord(project, req.user._id);
+    if (!record) {
+      return error(res, "You are not a member of this project", "FORBIDDEN", 403);
+    }
+
+    req.task = task;
+    req.project = project;
+    req.userPermission = record.permission;
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
 router.get("/:projectId", auth, requireMember, async (req, res, next) => {
   try {
     const tasks = await Task.find({ projectId: req.params.projectId })
@@ -40,14 +60,10 @@ router.get("/:projectId", auth, requireMember, async (req, res, next) => {
   }
 });
 
-// POST create a task (owner only)
-router.post("/", auth, validate(schemas.createTask), async (req, res, next) => {
+router.post("/", auth, validate(schemas.createTask), requireMember, async (req, res, next) => {
   try {
-    const project = await Project.findById(req.body.projectId);
-    if (!project) return error(res, "Project not found", "NOT_FOUND", 404);
-
-    if (project.userId.toString() !== req.user._id.toString()) {
-      return error(res, "Only the project owner can create tasks", "FORBIDDEN", 403);
+    if (req.userPermission === "member") {
+      return error(res, "Only the owner or admin can create tasks", "FORBIDDEN", 403);
     }
 
     const lastTask = await Task.findOne({
@@ -79,28 +95,23 @@ router.post("/", auth, validate(schemas.createTask), async (req, res, next) => {
   }
 });
 
-// PATCH update a task (owner only)
-router.patch("/:id", auth, validate(schemas.editTask), async (req, res, next) => {
+router.patch("/:id", auth, validate(schemas.editTask), requireTaskProject, async (req, res, next) => {
   try {
-    const task = await Task.findById(req.params.id);
-    if (!task) return error(res, "Task not found", "NOT_FOUND", 404);
-
-    const project = await Project.findById(task.projectId);
-    if (project.userId.toString() !== req.user._id.toString()) {
-      return error(res, "Only the project owner can edit tasks", "FORBIDDEN", 403);
+    if (req.userPermission === "member") {
+      return error(res, "Only the owner or admin can edit tasks", "FORBIDDEN", 403);
     }
 
-    Object.assign(task, req.body);
-    await task.save();
+    Object.assign(req.task, req.body);
+    await req.task.save();
 
-    const populated = await task.populate([
+    const populated = await req.task.populate([
       { path: "assignedTo", select: "username email" },
       { path: "createdBy", select: "username email" },
     ]);
 
     const io = req.app.get("io");
     if (io) {
-      io.to(`project:${task.projectId}`).emit("task:updated", populated);
+      io.to(`project:${req.task.projectId}`).emit("task:updated", populated);
     }
 
     success(res, { task: populated }, "Task updated");
@@ -109,39 +120,25 @@ router.patch("/:id", auth, validate(schemas.editTask), async (req, res, next) =>
   }
 });
 
-// PATCH update task status and order (owner + members)
 router.patch(
   "/:id/status",
   auth,
   validate(schemas.updateTaskStatus),
+  requireTaskProject,
   async (req, res, next) => {
     try {
-      const task = await Task.findById(req.params.id);
-      if (!task) return error(res, "Task not found", "NOT_FOUND", 404);
+      req.task.status = req.body.status;
+      req.task.order = req.body.order;
+      await req.task.save();
 
-      const project = await Project.findById(task.projectId);
-      if (!project) return error(res, "Project not found", "NOT_FOUND", 404);
-
-      const userId = req.user._id.toString();
-      const isOwner = project.userId.toString() === userId;
-      const isMember = project.members.some((m) => m.toString() === userId);
-
-      if (!isOwner && !isMember) {
-        return error(res, "You are not a member of this project", "FORBIDDEN", 403);
-      }
-
-      task.status = req.body.status;
-      task.order = req.body.order;
-      await task.save();
-
-      const populated = await task.populate([
+      const populated = await req.task.populate([
         { path: "assignedTo", select: "username email" },
         { path: "createdBy", select: "username email" },
       ]);
 
       const io = req.app.get("io");
       if (io) {
-        io.to(`project:${task.projectId}`).emit("task:updated", populated);
+        io.to(`project:${req.task.projectId}`).emit("task:updated", populated);
       }
 
       success(res, { task: populated }, "Task status updated");
@@ -151,19 +148,14 @@ router.patch(
   },
 );
 
-// DELETE a task (owner only)
-router.delete("/:id", auth, async (req, res, next) => {
+router.delete("/:id", auth, requireTaskProject, async (req, res, next) => {
   try {
-    const task = await Task.findById(req.params.id);
-    if (!task) return error(res, "Task not found", "NOT_FOUND", 404);
-
-    const project = await Project.findById(task.projectId);
-    if (project.userId.toString() !== req.user._id.toString()) {
-      return error(res, "Only the project owner can delete tasks", "FORBIDDEN", 403);
+    if (req.userPermission === "member") {
+      return error(res, "Only the owner or admin can delete tasks", "FORBIDDEN", 403);
     }
 
-    const projectId = task.projectId.toString();
-    await task.deleteOne();
+    const projectId = req.task.projectId.toString();
+    await req.task.deleteOne();
 
     const io = req.app.get("io");
     if (io) {

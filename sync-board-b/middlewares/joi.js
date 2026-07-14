@@ -184,6 +184,20 @@ const schemas = {
       .required(),
     order: Joi.number().required(),
   }),
+
+  updatePermission: Joi.object({
+    permission: Joi.string().valid("admin", "member").required(),
+  }),
+
+  updateTeamRole: Joi.object({
+    teamRole: Joi.string()
+      .valid("frontend", "backend", "fullstack", "uiux", "devops", "qa", "ml", "mobile", "other")
+      .required(),
+  }),
+
+  inviteMember: Joi.object({
+    identifier: Joi.string().min(1).max(100).required(),
+  }),
 };
 
 module.exports = { validate, schemas };

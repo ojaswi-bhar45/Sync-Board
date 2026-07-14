@@ -3,23 +3,26 @@ const auth = require("../middlewares/auth");
 const router = require("express").Router();
 const { validate, schemas } = require("../middlewares/joi");
 const { success, error } = require("../utils/response");
+const { getMemberRecord } = require("../utils/permissions");
 
 router.patch("/settings/:id", auth, validate(schemas.updateProjectSettings), async (req, res, next) => {
   const { status, isOpenForCollaboration, lookingFor } = req.body;
   try {
+    const project = await Project.findById(req.params.id);
+    if (!project) return error(res, "Project not found", "NOT_FOUND", 404);
+
+    const record = getMemberRecord(project, req.user._id);
+    if (!record || (record.permission !== "owner" && record.permission !== "admin")) {
+      return error(res, "Only the owner or admin can update settings", "FORBIDDEN", 403);
+    }
+
     const updates = {};
     if (status !== undefined) updates.status = status;
     if (isOpenForCollaboration !== undefined) updates.isOpenForCollaboration = isOpenForCollaboration;
     if (lookingFor !== undefined) updates.lookingFor = lookingFor;
 
-    const project = await Project.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user._id },
-      updates,
-      { new: true },
-    );
-    if (!project)
-      return error(res, "Project not found", "NOT_FOUND", 404);
-    success(res, project, "Project settings updated");
+    const updated = await Project.findByIdAndUpdate(req.params.id, updates, { new: true });
+    success(res, updated, "Project settings updated");
   } catch (error) {
     next(error);
   }

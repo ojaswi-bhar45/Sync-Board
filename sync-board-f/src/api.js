@@ -100,6 +100,50 @@ export function removeMember(token, projectId, userId) {
   }).then(handleResponse)
 }
 
+export function getTeamMembers(token, projectId) {
+  return fetch(`${BASE}/api/v1/projects/${projectId}/members`, {
+    headers: headers(token),
+  }).then(handleResponse)
+}
+
+export function updateMemberPermission(token, projectId, userId, permission) {
+  return fetch(`${BASE}/api/v1/projects/${projectId}/members/${userId}/permission`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify({ permission }),
+  }).then(handleResponse)
+}
+
+export function updateMemberRole(token, projectId, userId, teamRole) {
+  return fetch(`${BASE}/api/v1/projects/${projectId}/members/${userId}/role`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify({ teamRole }),
+  }).then(handleResponse)
+}
+
+export function promoteMember(token, projectId, userId) {
+  return fetch(`${BASE}/api/v1/projects/${projectId}/members/${userId}/promote`, {
+    method: 'POST',
+    headers: headers(token),
+  }).then(handleResponse)
+}
+
+export function demoteMember(token, projectId, userId) {
+  return fetch(`${BASE}/api/v1/projects/${projectId}/members/${userId}/demote`, {
+    method: 'POST',
+    headers: headers(token),
+  }).then(handleResponse)
+}
+
+export function inviteMember(token, projectId, identifier) {
+  return fetch(`${BASE}/api/v1/projects/${projectId}/invite`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify({ identifier }),
+  }).then(handleResponse)
+}
+
 export function updateProjectSettings(token, projectId, data) {
   return fetch(`${BASE}/api/v1/projects/settings/${projectId}`, {
     method: 'PATCH',
@@ -272,6 +316,14 @@ export const api = {
     pin: pinProject,
     progress: updateProjectProgress,
     updateSettings: updateProjectSettings,
+  },
+  team: {
+    getMembers: getTeamMembers,
+    updatePermission: updateMemberPermission,
+    updateRole: updateMemberRole,
+    promote: promoteMember,
+    demote: demoteMember,
+    invite: inviteMember,
   },
   chat: { getMessages, sendMessage },
   canvas: {
