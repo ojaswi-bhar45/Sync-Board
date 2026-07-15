@@ -1,4 +1,5 @@
 import { MoreVertical } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 const PERMISSION_CONFIG = {
   owner: { icon: "\uD83D\uDC51", label: "Owner", className: "perm-owner" },
@@ -19,13 +20,14 @@ const TEAM_ROLE_LABELS = {
 };
 
 export default function TeamMemberCard({ member, currentUserPermission, onAction }) {
+  const { user: currentUser } = useAuth();
   const { user, permission, teamRole, joinedAt } = member;
   const perm = PERMISSION_CONFIG[permission] || PERMISSION_CONFIG.member;
   const roleLabel = TEAM_ROLE_LABELS[teamRole] || "Other";
-  const isCurrentUser = false;
+  const isCurrentUser = currentUser && user?._id === currentUser._id;
 
   const canShowMenu =
-    currentUserPermission === "owner" ||
+    (currentUserPermission === "owner" && permission !== "owner") ||
     (currentUserPermission === "admin" && permission === "member");
 
   const formatDate = (dateStr) => {

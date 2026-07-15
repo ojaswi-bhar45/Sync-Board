@@ -42,7 +42,7 @@ router.get("/:projectId/members", auth, requireProjectAccess, async (req, res, n
   try {
     const project = req.project;
 
-    const owner = await User.findById(project.userId).select("username email");
+    const ownerUser = await User.findById(project.userId).select("username email");
     const memberUserIds = project.members.map((m) => m.userId);
     const memberUsers = await User.find({ _id: { $in: memberUserIds } }).select("username email");
 
@@ -50,13 +50,6 @@ router.get("/:projectId/members", auth, requireProjectAccess, async (req, res, n
     for (const u of memberUsers) {
       userMap[u._id.toString()] = u;
     }
-
-    const ownerEntry = {
-      user: owner,
-      permission: "owner",
-      teamRole: null,
-      joinedAt: project.timestamp,
-    };
 
     const members = project.members.map((m) => {
       const user = userMap[m.userId.toString()];
@@ -68,7 +61,24 @@ router.get("/:projectId/members", auth, requireProjectAccess, async (req, res, n
       };
     });
 
-    members.unshift(ownerEntry);
+    const ownerInMembers = project.members.some(
+      (m) => m.userId.toString() === project.userId.toString(),
+    );
+
+    if (!ownerInMembers) {
+      members.unshift({
+        user: ownerUser,
+        permission: "owner",
+        teamRole: null,
+        joinedAt: project.timestamp,
+      });
+    } else {
+      const ownerIdx = members.findIndex((m) => m.permission === "owner");
+      if (ownerIdx > 0) {
+        const [ownerMember] = members.splice(ownerIdx, 1);
+        members.unshift(ownerMember);
+      }
+    }
 
     success(res, { members, userPermission: req.userPermission });
   } catch (err) {

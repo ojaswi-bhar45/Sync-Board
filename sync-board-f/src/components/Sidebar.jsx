@@ -11,14 +11,10 @@ import {
   LogOut,
   Shield,
   Zap,
-  Moon,
-  Sun,
 } from "lucide-react";
 import Logo from "./Logo";
 
 export default function Sidebar({
-  toggleTheme,
-  theme,
   user,
   onLogout,
   isMobileOpen,
@@ -157,16 +153,6 @@ export default function Sidebar({
                 title="Profile"
               >
                 <User size={16} />
-              </button>
-              <button
-                className="sidebar-icon-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleTheme();
-                }}
-                title={theme === "dark" ? "Light mode" : "Dark mode"}
-              >
-                {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
               </button>
               <button
                 className="sidebar-icon-btn sidebar-icon-btn-logout"

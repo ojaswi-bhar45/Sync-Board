@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ChatProvider, useChat } from '../context/ChatContext';
-import { useTheme } from '../hooks/useTheme';
 import { Menu, Grid3x3, PlusSquare, User, MessageSquare } from 'lucide-react';
 import Sidebar from './Sidebar';
 import ChatPanel from './ChatPanel';
@@ -10,7 +9,6 @@ import ToastContainer from './Toast';
 
 function HomeLayoutInner() {
   const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const { chatOpen, setChatOpen } = useChat();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -26,8 +24,6 @@ function HomeLayoutInner() {
       <ToastContainer />
       <div className="app-container">
         <Sidebar
-          toggleTheme={toggleTheme}
-          theme={theme}
           user={user}
           onLogout={logout}
           isMobileOpen={sidebarOpen}

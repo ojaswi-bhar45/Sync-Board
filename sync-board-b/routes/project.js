@@ -36,6 +36,14 @@ router.post("/add-projects", auth, validate(schemas.addDashboardProject), async 
       description,
       note,
       userId: req.user._id,
+      members: [
+        {
+          userId: req.user._id,
+          permission: "owner",
+          teamRole: "fullstack",
+          joinedAt: new Date(),
+        },
+      ],
     });
     await newProject.save();
     success(res, newProject, "Project created", 201);

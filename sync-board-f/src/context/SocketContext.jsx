@@ -13,33 +13,60 @@ export function SocketProvider({ children }) {
   useEffect(() => {
     if (!token || !user) return;
 
+    let cancelled = false;
+    let s = null;
     const base = import.meta.env.VITE_API_BASE_URL || '';
-    const s = io(base, {
-      auth: { token },
-      transports: ['websocket', 'polling'],
-    });
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
-    s.on('connect', () => setConnected(true));
-    s.on('disconnect', () => setConnected(false));
-    s.on('connect_error', () => setConnected(false));
+    const waitForBackend = async () => {
+      for (let i = 0; i < 30; i++) {
+        if (cancelled) return false;
+        try {
+          const res = await fetch(`${backendUrl}/health`);
+          if (res.ok) return true;
+        } catch {
+          // backend not ready yet
+        }
+        if (!cancelled) await new Promise((r) => setTimeout(r, 1000));
+      }
+      return false;
+    };
 
-    s.on('user-online', ({ userId }) => {
-      setOnlineUsers(prev => new Set(prev).add(userId));
-    });
-
-    s.on('user-offline', ({ userId }) => {
-      setOnlineUsers(prev => {
-        const next = new Set(prev);
-        next.delete(userId);
-        return next;
+    const connectSocket = () => {
+      s = io(base, {
+        auth: { token },
+        transports: ['websocket', 'polling'],
       });
-    });
 
-    socketRef.current = s;
+      s.on('connect', () => setConnected(true));
+      s.on('disconnect', () => setConnected(false));
+      s.on('connect_error', () => setConnected(false));
+
+      s.on('user-online', ({ userId }) => {
+        setOnlineUsers(prev => new Set(prev).add(userId));
+      });
+
+      s.on('user-offline', ({ userId }) => {
+        setOnlineUsers(prev => {
+          const next = new Set(prev);
+          next.delete(userId);
+          return next;
+        });
+      });
+
+      socketRef.current = s;
+    };
+
+    waitForBackend().then((ready) => {
+      if (!cancelled && ready) connectSocket();
+    });
 
     return () => {
-      s.removeAllListeners();
-      if (s.connected) s.disconnect();
+      cancelled = true;
+      if (s) {
+        s.removeAllListeners();
+        if (s.connected) s.disconnect();
+      }
       socketRef.current = null;
       setConnected(false);
     };

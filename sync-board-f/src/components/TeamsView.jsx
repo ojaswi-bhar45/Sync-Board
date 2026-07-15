@@ -187,8 +187,8 @@ export default function TeamsView({ refreshKey }) {
                       <span className="teams-project-meta">
                         by {project.userId?.username || "Unknown"}
                         {" \u00B7 "}
-                        {members.length > 0 ? members.length : (project.members?.length || 0) + 1} member
-                        {((members.length > 0 ? members.length : (project.members?.length || 0) + 1) !== 1) ? "s" : ""}
+                        {isExpanded ? members.length : (project.members?.length || 0)} member
+                        {((isExpanded ? members.length : (project.members?.length || 0)) !== 1) ? "s" : ""}
                         {" \u00B7 "}
                         <span className={`teams-permission-chip ${project.userPermission}`}>
                           {project.userPermission === "owner" ? "\uD83D\uDC51 Owner" : project.userPermission === "admin" ? "\uD83D\uDEE0\uFE0F Admin" : "\uD83D\uDC64 Member"}

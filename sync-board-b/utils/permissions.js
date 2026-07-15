@@ -16,14 +16,20 @@ const TEAM_ROLES = {
   other: "Other",
 };
 
+function toIdString(value) {
+  if (!value) return null;
+  if (value._id) return value._id.toString();
+  return value.toString();
+}
+
 function getMemberRecord(project, userId) {
   const uid = userId.toString();
 
-  if (project.userId.toString() === uid) {
+  if (toIdString(project.userId) === uid) {
     return { permission: "owner", teamRole: null, joinedAt: project.timestamp };
   }
 
-  const member = project.members.find((m) => m.userId.toString() === uid);
+  const member = project.members.find((m) => toIdString(m.userId) === uid);
   if (!member) return null;
 
   return {

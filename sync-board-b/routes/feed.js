@@ -171,6 +171,14 @@ router.post("/create", auth, validate(schemas.createProject), async (req, res, n
       status: status || "planning",
       isOpenForCollaboration: isOpenForCollaboration !== undefined ? isOpenForCollaboration : true,
       lookingFor: lookingFor || [],
+      members: [
+        {
+          userId: req.user._id,
+          permission: "owner",
+          teamRole: "fullstack",
+          joinedAt: new Date(),
+        },
+      ],
     });
 
     const populated = await project.populate("userId", "username email");
@@ -386,6 +394,20 @@ router.get("/my-teams", auth, async (req, res, next) => {
 
     const teams = projects.map((project) => {
       const record = getMemberRecord(project, req.user._id);
+
+      const members = [...project.members];
+      const ownerInMembers = members.some(
+        (m) => (m.userId?._id || m.userId)?.toString() === project.userId._id?.toString(),
+      );
+      if (!ownerInMembers) {
+        members.unshift({
+          userId: project.userId,
+          permission: "owner",
+          teamRole: null,
+          joinedAt: project.timestamp,
+        });
+      }
+
       return {
         _id: project._id,
         title: project.title,
@@ -394,7 +416,7 @@ router.get("/my-teams", auth, async (req, res, next) => {
         techStack: project.techStack,
         status: project.status,
         timestamp: project.timestamp,
-        members: project.members,
+        members,
         userPermission: record?.permission || "member",
       };
     });
