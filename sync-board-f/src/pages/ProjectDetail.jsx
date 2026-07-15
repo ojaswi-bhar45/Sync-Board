@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
-  ArrowLeft, Heart, MessageCircle, Eye, Users, Clock,
+  ArrowLeft, Heart, MessageCircle, Users, Clock,
   Handshake, Bookmark, Loader2,
 } from "lucide-react";
 import CommentSection from "../components/CommentSection";
@@ -180,7 +180,6 @@ export default function ProjectDetail() {
   const memberCount = project.members?.length || 0;
   const likeCount = project.likes?.length || 0;
   const commentCount = project.comments?.length || 0;
-  const viewCount = project.views || (project._id ? (project._id.charCodeAt(project._id.length - 1) * 37 + 50) : 250);
 
   const avatarUrl = project.userId?.username
     ? `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(project.userId.username)}&backgroundColor=6366f1&textColor=ffffff`
@@ -307,10 +306,6 @@ export default function ProjectDetail() {
               <div className="detail-card-action-btn detail-card-action-static">
                 <MessageCircle size={18} />
                 <span>{formatCount(commentCount)}</span>
-              </div>
-              <div className="detail-card-action-btn detail-card-action-static">
-                <Eye size={18} />
-                <span>{formatCount(viewCount)}</span>
               </div>
             </div>
             <div className="detail-card-actions-right">
