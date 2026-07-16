@@ -110,17 +110,19 @@ sync-board/                          # Root (monorepo)
 │   │   ├── project.js               # Dashboard project CRUD
 │   │   ├── chat.js                  # Per-project messaging
 │   │   ├── canvas.js                # Whiteboard element CRUD
+│   │   ├── team.js                  # Team management (members, roles, permissions, invites)
 │   │   ├── tasks.js                 # Task CRUD + status updates (Kanban)
 │   │   └── profile.js               # GET / and PATCH /edit
 │   ├── models/
 │   │   ├── User.js                  # username, email, password, optional profile fields
 │   │   ├── Project.js               # title, description, techStack, likes, comments,
-│   │   │                            #   members, joinRequest[], status, visibility
+│   │   │                            #   members[{userId,permission,teamRole}], joinRequest[], status
 │   │   ├── Message.js               # Chat message per project
 │   │   ├── CanvasElement.js         # Whiteboard elements (type, position, content)
 │   │   └── Task.js                  # Kanban task (title, status, priority, labels, assignee)
 │   ├── utils/
-│   │   └── response.js               # Standardized { data, message } / { error, code } helpers
+│   │   ├── response.js               # Standardized { data, message } / { error, code } helpers
+│   │   └── permissions.js            # 3-tier permission model (owner > admin > member), TEAM_ROLES
 │   ├── socket.js                    # Socket.IO server (JWT auth, chat rooms, typing, presence)
 │   ├── middlewares/
 │   │   ├── auth.js                  # JWT verification middleware (attaches req.user)
@@ -146,7 +148,7 @@ sync-board/                          # Root (monorepo)
 │       ├── App.jsx                  # Route definitions
 │       ├── App.css                  # Empty (all styles in index.css)
 │       ├── index.css                # All styles (~7500 lines), CSS custom properties
-│       ├── api.js                   # API client functions (projects, chat, canvas, tasks)
+│       ├── api.js                   # API client functions (projects, chat, canvas, tasks, teams)
 │       ├── context/
 │       │   ├── AuthContext.jsx      # Global auth state (user, token, login, logout, updateUser)
 │       │   ├── ChatContext.jsx      # Global chat state (chatOpen, chatProjectId, startChat, closeChat)
@@ -155,7 +157,10 @@ sync-board/                          # Root (monorepo)
 │       │   ├── Login.jsx            # Sign in form
 │       │   ├── Signup.jsx           # Registration form
 │       │   ├── Feed.jsx             # 3-column feed
-│       │   └── CreateProject.jsx    # Create new project (route-based)
+│       │   ├── MyFeed.jsx           # Personal project feed with CRUD
+│       │   ├── CreateProject.jsx    # Create new project (route-based)
+│       │   ├── EditProject.jsx      # Edit existing project (title/description read-only)
+│       │   └── ProjectDetail.jsx    # Full project detail view
 │       ├── components/
 │       │   ├── HomeLayout.jsx       # Shell with header + <Outlet> + global chat
 │       │   ├── Dashboard.jsx        # Dashboard shell with route-based child views
@@ -169,6 +174,8 @@ sync-board/                          # Root (monorepo)
 │       │   ├── RequestModal.jsx     # Collaboration request modal
 │       │   ├── CollaborationRequestsView.jsx
 │       │   ├── TeamsView.jsx        # Teams management view
+│       │   ├── TeamMemberCard.jsx   # Individual member card with actions
+│       │   ├── MemberActionMenu.jsx # Dropdown menu for member actions (promote/demote/remove)
 │       │   ├── EditProjectModal.jsx # Edit project modal
 │       │   ├── NewProjectModal.jsx  # Modal for dashboard project creation
 │       │   ├── ProtectedRoute.jsx   # Auth guard wrapper
@@ -224,6 +231,7 @@ const router = require("express").Router();
 router.use("/auth", require("./authRoutes"));       // POST /signup, POST /login
 router.use("/projects", require("./project"));       // CRUD: dashboard projects
 router.use("/projects", require("./feed"));          // Feed, likes, comments, requests
+router.use("/projects", require("./team"));          // Team management (members, roles, invites)
 router.use("/chat", require("./chat"));              // Per-project messaging
 router.use("/canvas", require("./canvas"));          // Whiteboard elements
 router.use("/tasks", require("./tasks"));             // Task CRUD + status updates (Kanban)
@@ -231,7 +239,7 @@ router.use("/profile", require("./profile"));        // GET, PATCH
 module.exports = router;
 ```
 
-Two route files mounted on `/projects` — Express routes are evaluated in order, so route definitions must not collide.
+Three route files mounted on `/projects` — Express routes are evaluated in order, so route definitions must not collide.
 
 ### 4.3 API Endpoints
 
@@ -344,9 +352,60 @@ Two route files mounted on `/projects` — Express routes are evaluated in order
 
 | Aspect | Detail |
 |--------|--------|
-| **Auth** | Required (owner only) |
+| **Auth** | Required (admin+ via `canManageMember`) |
 | **Behavior** | Pulls userId from `project.members` |
 | **Response** | `{ message }` |
+
+#### GET /api/v1/projects/:projectId/members
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required (any member) |
+| **Behavior** | Returns all members with their user info, permission level, team role, and join date |
+| **Response** | `{ members[{ userId, username, email, permission, teamRole, joinedAt }] }` |
+
+#### PATCH /api/v1/projects/:projectId/members/:userId/permission
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required (owner only) |
+| **Body** | `{ permission: "admin" \| "member" }` |
+| **Behavior** | Updates a member's permission level |
+| **Response** | `{ message }` |
+
+#### PATCH /api/v1/projects/:projectId/members/:userId/role
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required (admin+) |
+| **Body** | `{ teamRole: string }` (one of `TEAM_ROLES`) |
+| **Behavior** | Updates a member's team role |
+| **Response** | `{ message }` |
+
+#### POST /api/v1/projects/:projectId/members/:userId/promote
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required (owner only) |
+| **Behavior** | Promotes a member to admin |
+| **Response** | `{ message }` |
+
+#### POST /api/v1/projects/:projectId/members/:userId/demote
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required (owner only) |
+| **Behavior** | Demotes an admin back to member |
+| **Response** | `{ message }` |
+
+#### POST /api/v1/projects/:projectId/invite
+
+| Aspect | Detail |
+|--------|--------|
+| **Auth** | Required (admin+) |
+| **Body** | `{ identifier: string }` (email or username) |
+| **Behavior** | Finds user by email/username, adds them to project members with "member" permission |
+| **Response** | `{ message, member }` |
 
 #### GET /api/v1/projects/project
 
@@ -528,7 +587,12 @@ Socket.IO runs on the same HTTP server, authenticated via JWT in the handshake `
   techStack:   { type: [String], default: [] },
   likes:       [{ type: ObjectId, ref: "User" }],
   comments:    [{ user: { ObjectId, ref: "User" }, text: String, createdAt: Date }],
-  members:     [{ type: ObjectId, ref: "User" }],
+  members:     [{
+    userId:     { ObjectId, ref: "User", required: true },
+    permission: { enum: ["owner", "admin", "member"], default: "member" },
+    teamRole:   { enum: ["frontend", "backend", "fullstack", "uiux", "devops", "qa", "ml", "mobile", "other"], default: "other" },
+    joinedAt:   { type: Date, default: Date.now }
+  }],
   joinRequest: [{
     user: { ObjectId, ref: "User" },
     note: String,
@@ -545,6 +609,24 @@ Socket.IO runs on the same HTTP server, authenticated via JWT in the handshake `
   timestamp:             { type: Date, default: Date.now }
 }
 ```
+
+#### Permission Model (`utils/permissions.js`)
+
+Three-tier permission hierarchy for team management:
+
+| Level | Permission | Capabilities |
+|-------|-----------|--------------|
+| 3 | `owner` | Full control: promote/demote admins, update permissions, remove any member, edit project settings |
+| 2 | `admin` | Manage members: update team roles, remove members, invite users |
+| 1 | `member` | Basic access: view members, manage own role |
+
+**Constants:**
+- `TEAM_ROLES`: `["frontend", "backend", "fullstack", "uiux", "devops", "qa", "ml", "mobile", "other"]`
+
+**Helper functions:**
+- `getMemberRecord(project, userId)` — Returns the member record `{ userId, permission, teamRole, joinedAt }` from `project.members`, or `null` if not a member. Owner is checked via `project.userId`.
+- `hasPermission(userPermission, requiredPermission)` — Compares permission levels (owner > admin > member).
+- `canManageMember(userPermission, targetPermission)` — Returns `true` if user can manage the target (must have strictly higher permission level).
 
 #### Message Model
 
@@ -640,8 +722,10 @@ document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
 | `/dashboard/feed` | `Feed` | 3-column feed page |
 | `/dashboard/my-feed` | `MyFeed` | Personal project feed with CRUD |
 | `/dashboard/create` | `CreateProject` | Create new project |
+| `/dashboard/edit-project/:projectId` | `EditProject` | Edit existing project |
 | `/dashboard/profile` | `Profile` | Edit profile |
 | `/dashboard/projects` | `ProjectsList` | My projects grid |
+| `/dashboard/project/:projectId` | `ProjectDetail` | Full project detail view |
 | `/dashboard/workspace/:projectId` | `Workspace` | Canvas + chat |
 | `*` | `Navigate to="/dashboard/feed"` | Catch-all redirect |
 
@@ -673,8 +757,10 @@ document.documentElement.setAttribute('data-theme', savedTheme || 'dark')
       <Route path="feed" element={<Feed />} />
       <Route path="my-feed" element={<MyFeed />} />
       <Route path="create" element={<CreateProject />} />
+      <Route path="edit-project/:projectId" element={<EditProject />} />
       <Route path="profile" element={<Profile />} />
       <Route path="projects" element={<ProjectsList />} />
+      <Route path="project/:projectId" element={<ProjectDetail />} />
       <Route path="workspace/:projectId" element={<Workspace />} />
     </Route>
     <Route path="*" element={<Navigate to="/" replace />} />
@@ -1930,3 +2016,4 @@ All P0 issues have been resolved: password hashes are stripped from API response
 | 2026-07-02 | System | Phase 1 — conditional DNS override, simplified MongoDB connect with .catch() exit |
 | 2026-07-02 | System | Phase 2 — standardized API response format (`{ data, message }` / `{ error, code }`), added `utils/response.js` helper, error handler maps Mongoose errors to codes, all catch blocks sanitized |
 | 2026-07-14 | System | Added Project Roadmap (Kanban Board): Task model, task routes, @dnd-kit DnD, workspace tab system, roadmap components, CSS styles |
+| 2026-07-16 | System | Added Team Management: team.js routes (7 endpoints), 3-tier permission model (owner/admin/member), TEAM_ROLES enum, Project.members schema update with userId/permission/teamRole/joinedAt. Added EditProject page (title/description read-only), MyFeed page, ProjectDetail page. Updated frontend routing and component tree. |

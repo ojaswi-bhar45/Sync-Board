@@ -198,7 +198,18 @@ All routes are mounted under `/api/v1`. Auth is via `Authorization: Bearer <toke
 | GET    | `/projects/my-requests`      | Yes  | Requests you've sent               |
 | PUT    | `/projects/request/:pid/:rid`| Yes  | Accept/reject a request            |
 | GET    | `/projects/my-teams`         | Yes  | Projects you own or belong to      |
-| DELETE | `/projects/:pid/members/:uid`| Yes  | Remove a member                    |
+| DELETE | `/projects/:pid/members/:uid`| Yes  | Remove a member (admin+)           |
+
+### Team Management
+
+| Method | Route                                         | Auth     | Description                    |
+|--------|-----------------------------------------------|----------|--------------------------------|
+| GET    | `/projects/:pid/members`                      | Yes      | List all members with roles    |
+| PATCH  | `/projects/:pid/members/:uid/permission`      | Yes      | Update member permission (owner) |
+| PATCH  | `/projects/:pid/members/:uid/role`            | Yes      | Update team role (admin+)      |
+| POST   | `/projects/:pid/members/:uid/promote`         | Yes      | Promote member to admin (owner) |
+| POST   | `/projects/:pid/members/:uid/demote`          | Yes      | Demote admin to member (owner) |
+| POST   | `/projects/:pid/invite`                       | Yes      | Invite user by email/username (admin+) |
 
 ### Dashboard (Projects CRUD)
 
@@ -207,6 +218,7 @@ All routes are mounted under `/api/v1`. Auth is via `Authorization: Bearer <toke
 | GET    | `/projects/project`            | Yes  | List your own projects     |
 | POST   | `/projects/add-projects`       | Yes  | Create dashboard project   |
 | PATCH  | `/projects/edit-project/:id`   | Yes  | Edit your project          |
+| PATCH  | `/projects/settings/:id`       | Yes  | Update project settings    |
 
 ### Chat
 
@@ -323,6 +335,7 @@ See [ARCHITECTURE.md — Known Issues](./ARCHITECTURE.md#7-known-issues--securit
 - Prevent self-requests on join requests
 - Real-time chat via WebSocket (Socket.IO)
 - Project Roadmap / Kanban Board (5-column drag-and-drop with @dnd-kit)
+- Team management with roles, permissions, and invites
 
 ### Short-term
 
@@ -338,7 +351,6 @@ See [ARCHITECTURE.md — Known Issues](./ARCHITECTURE.md#7-known-issues--securit
 ### Long-term
 
 - File/image upload for projects and comments
-- Team management with roles, permissions, and invites
 - Responsive mobile layout for feed and workspace views
 - Task templates for common project structures
 - Epic/Story/Task hierarchy for complex projects
