@@ -68,6 +68,13 @@ router.patch("/edit-project/:id", auth, validate(schemas.editProject), async (re
   if (req.body.title !== undefined) updates.title = req.body.title;
   if (req.body.description !== undefined) updates.description = req.body.description;
   if (req.body.note !== undefined) updates.note = req.body.note;
+  if (req.body.techStack !== undefined) {
+    let { techStack } = req.body;
+    if (typeof techStack === "string") {
+      techStack = techStack.split(",").map((s) => s.trim()).filter(Boolean);
+    }
+    updates.techStack = techStack || [];
+  }
   if (req.body.status !== undefined) updates.status = req.body.status;
   if (req.body.isOpenForCollaboration !== undefined) updates.isOpenForCollaboration = req.body.isOpenForCollaboration;
   if (req.body.lookingFor !== undefined) updates.lookingFor = req.body.lookingFor;

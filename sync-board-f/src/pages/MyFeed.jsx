@@ -518,7 +518,7 @@ export default function MyFeed() {
   };
 
   const handleEdit = (project) => {
-    navigate(`/dashboard/create`, { state: { editProject: project } });
+    navigate(`/dashboard/edit-project/${project._id}`, { state: { project } });
   };
 
   const handlePostCreated = (project) => {

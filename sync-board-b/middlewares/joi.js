@@ -58,6 +58,9 @@ const schemas = {
     title: Joi.string().min(1).max(200).optional(),
     description: Joi.string().min(1).max(2000).optional(),
     note: Joi.string().max(2000).optional().allow(""),
+    techStack: Joi.alternatives()
+      .try(Joi.string(), Joi.array().items(Joi.string()))
+      .optional(),
     status: Joi.string()
       .valid("planning", "active", "completed")
       .optional(),

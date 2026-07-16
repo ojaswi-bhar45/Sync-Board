@@ -175,6 +175,14 @@ export function editDashboardProject(token, id, body) {
   }).then(handleResponse)
 }
 
+export function editProject(token, id, body) {
+  return fetch(`${BASE}/api/v1/projects/edit-project/${id}`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify(body),
+  }).then(handleResponse)
+}
+
 export function deleteProject(token, id) {
   return fetch(`${BASE}/api/v1/projects/delete/${id}`, {
     method: 'DELETE',

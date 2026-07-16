@@ -8,6 +8,7 @@ import Signup from './pages/Signup';
 import Feed from './pages/Feed';
 import MyFeed from './pages/MyFeed';
 import CreateProject from './pages/CreateProject';
+import EditProject from './pages/EditProject';
 import Profile from './components/Profile';
 import ProjectsList from './components/ProjectsList';
 import Workspace from './components/Workspace';
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="feed" element={<Feed />} />
             <Route path="my-feed" element={<MyFeed />} />
             <Route path="create" element={<CreateProject />} />
+            <Route path="edit-project/:projectId" element={<EditProject />} />
             <Route path="profile" element={<Profile />} />
             <Route path="projects" element={<ProjectsList />} />
             <Route path="project/:projectId" element={<ProjectDetail />} />
