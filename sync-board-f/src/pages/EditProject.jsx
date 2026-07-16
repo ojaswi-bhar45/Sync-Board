@@ -107,11 +107,15 @@ export default function EditProject() {
 
   const initialProject = location.state?.project || null;
 
-  const [form, setForm] = useState({ title: "", description: "", note: "" });
-  const [techTags, setTechTags] = useState([]);
-  const [status, setStatus] = useState("planning");
-  const [isOpenForCollaboration, setIsOpenForCollaboration] = useState(true);
-  const [lookingFor, setLookingFor] = useState([]);
+  const [form, setForm] = useState({
+    title: initialProject?.title || "",
+    description: initialProject?.description || "",
+    note: initialProject?.note || "",
+  });
+  const [techTags, setTechTags] = useState(initialProject?.techStack || []);
+  const [status, setStatus] = useState(initialProject?.status || "planning");
+  const [isOpenForCollaboration, setIsOpenForCollaboration] = useState(initialProject?.isOpenForCollaboration !== false);
+  const [lookingFor, setLookingFor] = useState(initialProject?.lookingFor || []);
   const [lookingForInput, setLookingForInput] = useState("");
   const [loading, setLoading] = useState(!initialProject);
   const [saving, setSaving] = useState(false);
@@ -130,20 +134,6 @@ export default function EditProject() {
   useAutoResize(noteRef);
 
   useEffect(() => {
-    if (initialProject) {
-      setForm({
-        title: initialProject.title || "",
-        description: initialProject.description || "",
-        note: initialProject.note || "",
-      });
-      setTechTags(initialProject.techStack || []);
-      setStatus(initialProject.status || "planning");
-      setIsOpenForCollaboration(initialProject.isOpenForCollaboration !== false);
-      setLookingFor(initialProject.lookingFor || []);
-      setLoading(false);
-      return;
-    }
-
     if (!projectId || !token) return;
     let cancelled = false;
 
@@ -183,7 +173,7 @@ export default function EditProject() {
     })();
 
     return () => { cancelled = true; };
-  }, [projectId, token, initialProject, user, navigate]);
+  }, [projectId, token, user, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
